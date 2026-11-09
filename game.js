@@ -300,19 +300,7 @@ export function startRound(s, rnd = Math.random) {
   s.dealer = s.players.length ? s.dealer % s.players.length : 0;
 
   const order = s.players.map((p) => p.id);
-  // Distribuição inicial: uma carta por jogador. Ações caem em si mesmas.
-  for (let i = 0; i < order.length; i += 1) {
-    const id = order[(s.dealer + i) % order.length];
-    const card = draw(s, rnd);
-    if (!card) break;
-    const result = give(s, id, card, true);
-    if (card.t === "n" || card.t === "m") burn(s, card);
-    if (result === "flip7") {
-      endRound(s, id);
-      return s;
-    }
-  }
-
+  // Ninguém recebe carta sozinho: a rodada começa vazia e cada jogador pede a sua.
   s.last = null;
   addLog(s, `Rodada ${s.roundNo} começou`);
   const first = nextActiveFrom(s, order[s.dealer], null);
@@ -350,6 +338,8 @@ export function stay(s, id) {
   if (s.phase !== "playing" || s.turn !== id || s.pending.length) return s;
   if (!isActive(s, id)) return s;
   const h = s.hands[id];
+  // Sem carta na mão não dá para parar: a primeira compra é sempre do jogador.
+  if (!h.numbers.length && !h.bonuses.length && !h.x2 && !h.chance) return s;
   const points = scoreOf(h);
   stand(s, id, points);
   h.stayed = true;

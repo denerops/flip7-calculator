@@ -299,8 +299,9 @@ function dockView(s) {
   const pending = s.pending[0];
   const myTurn = s.turn === room.me && !pending;
   if (myTurn && game.isActive(s, room.me)) {
+    const empty = !me.numbers.length && !me.bonuses.length && !me.x2 && !me.chance;
     return `<footer class="dock">${float}<div class="dock-row two">
-      <button type="button" class="icon-btn clear lbl" data-action="ol-stay" aria-label="Parar com ${pointsOf(me)} pontos">${ICONS.stay}<span>Parar</span></button>
+      <button type="button" class="icon-btn clear lbl" data-action="ol-stay" aria-label="Parar com ${pointsOf(me)} pontos" ${empty ? "disabled" : ""}>${ICONS.stay}<span>Parar</span></button>
       <button type="button" class="icon-btn go lbl" data-action="ol-hit" aria-label="Pedir carta">${ICONS.hit}<span>Pedir carta</span></button>
     </div></footer>`;
   }

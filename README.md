@@ -20,7 +20,7 @@ Quem estourou fica com 0. A partida fecha quando alguém passa de 200 e fica soz
 
 O baralho é o oficial, com 94 cartas: um 0, um 1, dois 2, três 3 e assim até doze 12 (79 números), +2 +4 +6 +8 +10 e ×2 (6 modificadores) e três de cada ação: Freeze, Flip Three e Second Chance.
 
-- Cada jogador recebe uma carta no começo da rodada e escolhe **pedir carta** ou **parar**.
+- A rodada começa vazia: cada jogador escolhe **pedir carta** ou **parar**. Ninguém compra sozinho.
 - **Freeze** congela um jogador, que guarda os pontos e sai da rodada.
 - **Flip Three** faz alguém comprar três cartas de uma vez.
 - **Segunda Chance** salva de um número repetido, uma vez só.
