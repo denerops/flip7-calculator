@@ -645,24 +645,19 @@ function formula(entry, score) {
   return bits.join("");
 }
 
-function cardButton(card, pressed) {
+const SHELL_SVG = `<svg viewBox="0 0 64 56" aria-hidden="true"><path fill="currentColor" d="M6 42c3-20 14-32 26-34 12 2 23 14 26 34-9-9-18-12-26-12S15 33 6 42z"/><path fill="currentColor" d="M32 50c-4 0-6-2.4-6-5h12c0 2.6-2 5-6 5z"/><path fill="none" stroke="#fff" stroke-opacity=".72" stroke-width="1.6" stroke-linecap="round" d="M32 14v18M23 16c3 8 6 12 9 15M41 16c-3 8-6 12-9 15M16 22c6 6 11 8 16 8M48 22c-6 6-11 8-16 8"/></svg>`;
+
+function cardInnards(card) {
   const two = card.n > 9 ? " two" : "";
-  return `<button type="button" class="card${pressed ? " on" : ""}" style="--ink:${card.ink};--shell:${card.shell}" data-action="toggle-number" data-n="${card.n}" data-focus="n-${card.n}" aria-pressed="${pressed}" aria-label="${card.n}, ${esc(card.name)}">
-    <span class="shell l" aria-hidden="true"></span>
-    <span class="shell r" aria-hidden="true"></span>
-    <span class="num${two}">${card.n}</span>
-    <span class="label">${esc(card.name)}</span>
-  </button>`;
+  return `<span class="notch" aria-hidden="true"></span><span class="frame" aria-hidden="true"></span><span class="num${two}">${card.n}</span><span class="plate"><span class="shell">${SHELL_SVG}</span><span class="label">${esc(card.name)}</span><span class="shell">${SHELL_SVG}</span></span>`;
+}
+
+function cardButton(card, pressed) {
+  return `<button type="button" class="card${pressed ? " on" : ""}" style="--ink:${card.ink};--shell:${card.shell}" data-action="toggle-number" data-n="${card.n}" data-focus="n-${card.n}" aria-pressed="${pressed}" aria-label="${card.n}, ${esc(card.name)}">${cardInnards(card)}</button>`;
 }
 
 function cardFace(card, extra) {
-  const two = card.n > 9 ? " two" : "";
-  return `<div class="card ${extra}" style="--ink:${card.ink};--shell:${card.shell}" aria-hidden="true">
-    <span class="shell l"></span>
-    <span class="shell r"></span>
-    <span class="num${two}">${card.n}</span>
-    <span class="label">${esc(card.name)}</span>
-  </div>`;
+  return `<div class="card ${extra}" style="--ink:${card.ink};--shell:${card.shell}" aria-hidden="true">${cardInnards(card)}</div>`;
 }
 
 function boardTable(rows) {
@@ -747,9 +742,9 @@ function calculatorView(player, entry) {
           .join("")}</div><div class="mods">${mods}<button type="button" class="mod${entry.x2 ? " on" : ""}${xOwner ? " taken" : ""}" style="--ink:#241c16" data-action="toggle-x2" data-focus="x2" aria-pressed="${entry.x2}" aria-label="Vezes 2${xOwner ? `, com ${esc(xOwner.name)}` : ""}">×2</button></div><p class="legend">×2 dobra os números. Os + entram depois. 7 números: +15.</p></div>`;
   return `<section class="calc${entry.bust ? " bust" : ""}">
     <div class="who"><p>Vez de <strong>${esc(player.name)}</strong></p>${count}</div>
+    <div class="score${score.flip7 ? " flip" : ""}${entry.bust ? " bust" : ""}"><b>${display}</b><span>nesta rodada</span></div>
     <p class="formula">${formula(entry, score)}</p>
     ${state.hint ? `<p class="warn" role="status">${esc(state.hint)}</p>` : ""}
-    <div class="score${score.flip7 ? " flip" : ""}${entry.bust ? " bust" : ""}"><b>${display}</b><span>nesta rodada</span></div>
     <div class="tabs" role="tablist" aria-label="Como lançar">
       <button type="button" role="tab" aria-selected="${entry.source !== "manual"}" data-action="mode" data-mode="cards">Cartas</button>
       <button type="button" role="tab" aria-selected="${entry.source === "manual"}" data-action="mode" data-mode="manual">Digitar</button>
