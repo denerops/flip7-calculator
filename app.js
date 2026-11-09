@@ -3,6 +3,11 @@ const FLIP_BONUS = 30;
 const STORAGE_KEY = "flip7-marcador-v1";
 const INSTALL_SKIP = "flip7-install-skip";
 
+import * as onlineModule from "./online.js";
+import * as roomModule from "./room.js";
+import * as gameModule from "./game.js";
+import * as api from "./net.js";
+
 const CARDS = [
   { n: 0, name: "Zero", ink: "#d9383a" },
   { n: 1, name: "Um", ink: "#d89648" },
@@ -30,6 +35,10 @@ const MODS = [
 let deferredInstall = null;
 let toastTimer = 0;
 let toastGone = 0;
+let mode = "marker";
+let onlineEntered = false;
+let entered = false;
+let pendingFocus = "";
 const TOAST_HOLD = 2200;
 const TOAST_LEAVE = 280;
 let lastScreen = null;
@@ -940,9 +949,34 @@ function dialogView() {
 }
 
 function view() {
+  if (!entered) return homeView() + dialogView();
   if (state.screen === "setup") return setupView() + dialogView();
   if (state.screen === "victory") return victoryView() + dialogView();
   return playView() + dialogView();
+}
+
+function homeView() {
+  const saved = state.players.length > 0 && state.screen !== "setup";
+  const resume = saved
+    ? `<button type="button" class="mode" data-action="home-marker"><strong>Continuar a mesa</strong><span>${state.players.length} jogadores, rodada ${roundNumber()}.</span></button>`
+    : "";
+  return `<main class="setup home">
+    ${heroHand()}
+    <p class="eyebrow">Flip 7</p>
+    <h1>Como vamos jogar?</h1>
+    <div class="mode-list">
+      <button type="button" class="mode primary-mode" data-action="home-marker">
+        <strong>Marcador de mesa</strong>
+        <span>Cartas de verdade na mesa. O app soma e ordena o placar.</span>
+      </button>
+      <button type="button" class="mode" data-action="home-online">
+        <strong>Jogar online</strong>
+        <span>Crie uma sala, mande o link e jogue com os amigos.</span>
+      </button>
+      ${resume}
+    </div>
+    <p class="fine">A meta é ${TARGET} pontos. O ×2 dobra só os números, os + entram depois e sete números valem +${FLIP_BONUS}.</p>
+  </main>`;
 }
 
 function title() {
@@ -1174,6 +1208,7 @@ function animateChanges(before) {
 }
 
 function render() {
+  if (mode === "online") return renderOnline();
   const before = snapshotView();
   const y = window.scrollY;
   const rankLeft = document.querySelector(".rank")?.scrollLeft ?? 0;
@@ -1264,6 +1299,159 @@ function handle(action, target) {
   if (action === "reset") return resetMatch();
   if (action === "rematch") return rematch();
   if (action === "install") return installApp();
+  if (action === "home-marker") {
+    entered = true;
+    return commit();
+  }
+  if (action === "home-online") {
+    entered = true;
+    return enterOnline();
+  }
+  if (action.startsWith("ol-")) return handleOnline(action, target);
+}
+
+// --- Jogo online -------------------------------------------------------
+
+const online = onlineModule.onlineView;
+const room = roomModule.store;
+
+function isOnline() {
+  return mode === "online" || Boolean(new URLSearchParams(location.search).get("sala"));
+}
+
+function enterOnline() {
+  mode = "online";
+  document.body.classList.add("online-mode");
+  renderOnline();
+}
+
+function leaveOnline() {
+  roomModule.exitRoom();
+  onlineModule.go("home");
+  mode = "marker";
+  onlineEntered = true;
+  entered = true;
+  document.body.classList.remove("online-mode");
+  const url = new URL(location.href);
+  url.searchParams.delete("sala");
+  history.replaceState(null, "", url.pathname + url.search);
+  render();
+}
+
+function renderOnline() {
+  const root = document.getElementById("app");
+  root.innerHTML = onlineModule.onlineView();
+  document.title = `${room.state?.name || "Flip 7"} · Online`;
+  if (pendingFocus) {
+    document.getElementById(pendingFocus)?.focus({ preventScroll: true });
+    pendingFocus = "";
+  }
+}
+
+function askName(message) {
+  const name = prompt(message, roomModule.myName());
+  if (name === null) return null;
+  const clean = name.trim().slice(0, 18);
+  return clean || null;
+}
+
+async function handleOnline(action, target) {
+  const s = room.state;
+  if (action === "ol-marker" || action === "ol-home") return leaveOnline();
+  if (action === "ol-create-screen") {
+    onlineModule.go("create");
+    return renderOnline();
+  }
+  if (action === "ol-enter-screen") {
+    onlineModule.go("enter");
+    return renderOnline();
+  }
+  if (action === "ol-create" || action === "ol-enter") {
+    const form = target.closest("form");
+    const roomField = form.elements.namedItem("room");
+    const playerField = form.elements.namedItem("player");
+    const playerName = playerField.value.trim().slice(0, 18);
+    if (!playerName) return failName(form);
+    roomModule.rememberName(playerName);
+    const code = api.slug(roomField.value);
+    if (!code) {
+      roomField.focus();
+      roomField.style.borderColor = "#e25038";
+      return;
+    }
+    onlineModule.view.roomDraft = roomField.value;
+    onlineModule.view.codeDraft = roomField.value;
+    try {
+      if (action === "ol-create") await roomModule.createRoom(roomField.value);
+      else {
+        const ok = await roomModule.openRoom(code);
+        if (!ok) return renderOnline();
+      }
+      enterOnline();
+      if (!roomModule.amIn()) await roomModule.joinSelf(playerName);
+      else if (roomModule.myName() !== playerName) {
+        await roomModule.play((state, id) => gameModule.rename(state, id, playerName));
+      }
+    } catch (error) {
+      alert(String(error?.message || error));
+    }
+    return renderOnline();
+  }
+  if (action === "ol-join") {
+    const form = target.closest("form");
+    const playerName = form.elements.namedItem("player").value.trim().slice(0, 18);
+    if (!playerName) return failName(form);
+    await roomModule.joinSelf(playerName);
+    return renderOnline();
+  }
+  if (action === "ol-copy") {
+    const input = document.getElementById("share-link");
+    try {
+      await navigator.clipboard.writeText(input.value);
+      target.textContent = "Copiado";
+      setTimeout(() => renderOnline(), 1500);
+    } catch {
+      input.select();
+    }
+    return;
+  }
+  if (action === "ol-start") return void (await act((state) => gameModule.startRound(state)));
+  if (action === "ol-hit") return void (await act((state, id) => gameModule.hit(state, id)));
+  if (action === "ol-stay") return void (await act((state, id) => gameModule.stay(state, id)));
+  if (action === "ol-resolve") return void (await act((state) => gameModule.resolve(state, target.dataset.id)));
+  if (action === "ol-next") return void (await act((state) => gameModule.nextRound(state)));
+  if (action === "ol-kick") return void (await act((state) => gameModule.leave(state, target.dataset.id)));
+  if (action === "ol-rematch") {
+    return void (await act((state) => {
+      for (const player of state.players) player.score = 0;
+      Object.assign(state, { winner: null, dealer: 0, roundNo: 0, log: [], hands: {} });
+      state.phase = "lobby";
+      return gameModule.startRound(state);
+    }));
+  }
+  if (action === "ol-rename") {
+    const name = askName("Seu nome na mesa:");
+    if (!name) return;
+    roomModule.rememberName(name);
+    await act((state, id) => gameModule.rename(state, id, name));
+    return;
+  }
+  if (action === "ol-leave") {
+    if (s && roomModule.amIn()) await act((state, id) => gameModule.leave(state, id));
+    return leaveOnline();
+  }
+}
+
+async function act(mutate) {
+  await roomModule.play(mutate);
+  renderOnline();
+}
+
+function failName(form) {
+  const input = form.elements.namedItem("player");
+  input.focus();
+  input.style.borderColor = "#e25038";
+  return;
 }
 
 function onKey(event) {
@@ -1317,6 +1505,7 @@ function init() {
     const value = input && "value" in input ? input.value : "";
     if (form.dataset.form === "add-player") submitName(value, "nameDraft");
     if (form.dataset.form === "add-late") submitName(value, "lateDraft");
+    if (form.dataset.form?.startsWith("ol-")) handle(form.dataset.form, form.querySelector("button[type=submit]") || form);
   });
   document.addEventListener("keydown", onKey);
   document.addEventListener("pointerdown", () => {
@@ -1338,6 +1527,21 @@ function init() {
   });
   render();
   offerInstall();
+  roomModule.onRoom(() => {
+    if (mode === "online") renderOnline();
+  });
+  const code = new URLSearchParams(location.search).get("sala");
+  if (code) {
+    entered = true;
+    mode = "online";
+    document.body.classList.add("online-mode");
+    renderOnline();
+    roomModule.openRoom(api.slug(code)).then((ok) => {
+      if (!ok) return renderOnline();
+      if (!roomModule.amIn() && roomModule.myName()) void roomModule.joinSelf(roomModule.myName()).then(renderOnline);
+      renderOnline();
+    });
+  }
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});
 }
 
