@@ -39,7 +39,6 @@ const state = {
   rounds: [],
   activeId: null,
   screen: "setup",
-  entryMode: "cards",
   banner: "",
   dialog: null,
   toast: null,
@@ -56,8 +55,6 @@ function blankEntry() {
     bonuses: [],
     x2: false,
     bust: false,
-    source: "cards",
-    typed: "",
     confirmed: false,
   };
 }
@@ -65,9 +62,7 @@ function blankEntry() {
 function blankRound() {
   const entries = {};
   for (const player of state.players) {
-    const entry = blankEntry();
-    entry.source = state.entryMode;
-    entries[player.id] = entry;
+    entries[player.id] = blankEntry();
   }
   return { closed: false, entries };
 }
@@ -75,14 +70,15 @@ function blankRound() {
 function normalizeEntry(entry) {
   const blank = blankEntry();
   if (!entry || typeof entry !== "object") return blank;
-  const bonuses = [2, 4, 6, 8, 10];
+  const numbers = [2, 4, 6, 8, 10];
+  // Entradas antigas gravadas como total digitado viram zero, já que só existem cartas agora.
+  const typed = typeof entry.typed === "string" ? entry.typed.replace(/\D/g, "").slice(0, 3) : "";
+  const legacy = entry.source === "manual" && typed !== "";
   return {
     numbers: Array.isArray(entry.numbers) ? entry.numbers.map(Number).filter((n) => n >= 0 && n <= 12) : [],
-    bonuses: Array.isArray(entry.bonuses) ? entry.bonuses.map(Number).filter((n) => bonuses.includes(n)) : [],
+    bonuses: Array.isArray(entry.bonuses) ? entry.bonuses.map(Number).filter((n) => numbers.includes(n)) : [],
     x2: Boolean(entry.x2),
-    bust: Boolean(entry.bust),
-    source: entry.source === "manual" ? "manual" : "cards",
-    typed: typeof entry.typed === "string" ? entry.typed.replace(/\D/g, "").slice(0, 3) : "",
+    bust: Boolean(entry.bust) || legacy,
     confirmed: Boolean(entry.confirmed),
   };
 }
@@ -90,11 +86,7 @@ function normalizeEntry(entry) {
 // Ordem oficial: soma dos números, ×2, modificadores +, bônus de Flip 7.
 function scoreOf(entry) {
   if (!entry || entry.bust) {
-    return { total: 0, bust: true, flip7: false, numbersSum: 0, afterX2: 0, bonusSum: 0, manual: false };
-  }
-  if (entry.source === "manual") {
-    const total = entry.typed === "" ? 0 : Number(entry.typed);
-    return { total, bust: false, flip7: false, numbersSum: total, afterX2: total, bonusSum: 0, manual: true };
+    return { total: 0, bust: true, flip7: false, numbersSum: 0, afterX2: 0, bonusSum: 0 };
   }
   const numbersSum = entry.numbers.reduce((sum, n) => sum + n, 0);
   const afterX2 = entry.x2 ? numbersSum * 2 : numbersSum;
@@ -107,7 +99,6 @@ function scoreOf(entry) {
     numbersSum,
     afterX2,
     bonusSum,
-    manual: false,
   };
 }
 
@@ -122,7 +113,6 @@ function selfCheck() {
     [{ ...empty, bonuses: [10] }, 10],
     [{ ...empty, x2: true, bonuses: [10] }, 10],
     [{ ...empty, numbers: [12, 11, 10], bust: true }, 0],
-    [{ ...empty, source: "manual", typed: "47" }, 47],
     [{ ...empty, numbers: [12, 11, 10, 9, 8, 7, 6], x2: true, bonuses: [2, 4, 6, 8, 10] }, 171],
   ];
   for (const [entry, total] of cases) {
@@ -148,18 +138,10 @@ function activeEntry() {
 }
 
 function entryBlank(entry) {
-  return (
-    !entry.confirmed &&
-    !entry.bust &&
-    entry.numbers.length === 0 &&
-    entry.bonuses.length === 0 &&
-    !entry.x2 &&
-    entry.typed === ""
-  );
+  return !entry.confirmed && !entry.bust && entry.numbers.length === 0 && entry.bonuses.length === 0 && !entry.x2;
 }
 
 function hasDraft(entry) {
-  if (entry.source === "manual") return entry.typed !== "";
   return entry.numbers.length > 0 || entry.bonuses.length > 0 || entry.x2;
 }
 
@@ -202,7 +184,6 @@ function payload() {
     rounds: state.rounds,
     activeId: state.activeId,
     screen: state.screen,
-    entryMode: state.entryMode,
     banner: state.banner,
   };
 }
@@ -226,7 +207,6 @@ function load() {
     state.rounds = Array.isArray(data.rounds) ? data.rounds : [];
     state.activeId = data.activeId || null;
     state.screen = ["setup", "play", "victory"].includes(data.screen) ? data.screen : "setup";
-    state.entryMode = data.entryMode === "manual" ? "manual" : "cards";
     state.banner = typeof data.banner === "string" ? data.banner : "";
     for (const round of state.rounds) {
       round.closed = Boolean(round.closed);
@@ -331,7 +311,6 @@ function selectPlayer(id) {
   if (id === state.activeId && !entry.confirmed && !roundReady()) return;
   if (entry.confirmed) entry.confirmed = false;
   state.activeId = id;
-  if (entryBlank(entry)) entry.source = state.entryMode;
   state.hint = "";
   commit();
 }
@@ -350,7 +329,7 @@ function ownerOf(kind, value) {
   for (const player of state.players) {
     if (player.id === state.activeId) continue;
     const entry = round?.entries[player.id];
-    if (!entry || entry.source === "manual") continue;
+    if (!entry) continue;
     if (kind === "x2" && entry.x2) return player;
     if (kind === "bonus" && entry.bonuses.includes(value)) return player;
   }
@@ -361,7 +340,6 @@ function toggleNumber(raw) {
   const entry = activeEntry();
   if (entry.confirmed) return;
   const n = Number(raw);
-  entry.source = "cards";
   if (entry.numbers.includes(n)) {
     entry.numbers = entry.numbers.filter((value) => value !== n);
     state.hint = "";
@@ -379,7 +357,6 @@ function toggleBonus(raw) {
   const entry = activeEntry();
   if (entry.confirmed) return;
   const value = Number(raw);
-  entry.source = "cards";
   if (entry.bonuses.includes(value)) {
     entry.bonuses = entry.bonuses.filter((bonus) => bonus !== value);
     state.hint = "";
@@ -400,7 +377,6 @@ function toggleBonus(raw) {
 function toggleX2() {
   const entry = activeEntry();
   if (entry.confirmed) return;
-  entry.source = "cards";
   if (entry.x2) {
     entry.x2 = false;
     state.hint = "";
@@ -418,38 +394,10 @@ function toggleX2() {
   commit();
 }
 
-function setMode(mode) {
-  const entry = activeEntry();
-  if (entry.confirmed) return;
-  entry.source = mode === "manual" ? "manual" : "cards";
-  state.entryMode = entry.source;
-  state.hint = "";
-  commit();
-}
-
-function typeDigit(raw) {
-  const entry = activeEntry();
-  if (entry.confirmed || entry.source !== "manual") return;
-  const digit = String(raw);
-  if (entry.typed.length >= 3) return;
-  entry.typed = entry.typed === "0" ? digit : entry.typed + digit;
-  state.hint = "";
-  commit();
-}
-
-function backspace() {
-  const entry = activeEntry();
-  if (entry.confirmed || entry.source !== "manual") return;
-  entry.typed = entry.typed.slice(0, -1);
-  commit();
-}
-
 function clearActive() {
   const entry = activeEntry();
   if (entry.confirmed) return;
-  const source = entry.source;
   const fresh = blankEntry();
-  fresh.source = source;
   Object.assign(entry, fresh);
   state.hint = "";
   commit();
@@ -477,10 +425,7 @@ function nextOpen(fromId) {
 }
 
 function advanceFrom(id) {
-  const next = nextOpen(id);
-  state.activeId = next;
-  const entry = currentRound().entries[next];
-  if (entry && entryBlank(entry)) entry.source = state.entryMode;
+  state.activeId = nextOpen(id);
 }
 
 function confirmActive() {
@@ -488,7 +433,7 @@ function confirmActive() {
   const player = activePlayer();
   if (!player || entry.confirmed) return;
   if (!entry.bust && !hasDraft(entry)) {
-    state.hint = "Marque as cartas, digite o total ou toque em Estourou.";
+    state.hint = "Marque as cartas da mão ou toque em Estourou.";
     commit();
     return;
   }
@@ -624,7 +569,6 @@ async function installApp() {
 
 function detail(entry) {
   if (entry.bust) return "estourou";
-  if (entry.source === "manual") return "digitado";
   const bits = [];
   if (entry.numbers.length) bits.push(entry.numbers.join("+"));
   if (entry.x2) bits.push("×2");
@@ -635,7 +579,6 @@ function detail(entry) {
 
 function formula(entry, score) {
   if (entry.bust) return "Estourou. Esta rodada vale 0.";
-  if (entry.source === "manual") return entry.typed === "" ? "Digite o total já somado." : "Total digitado, sem detalhar as cartas.";
   if (!entry.numbers.length && !entry.bonuses.length && !entry.x2) return "Toque os números da mão. O 0 conta para o Flip 7.";
   const bits = [];
   if (entry.numbers.length) bits.push(`<span>${entry.numbers.join(" + ")} = ${score.numbersSum}</span>`);
@@ -756,7 +699,7 @@ function banners(rows) {
   const round = currentRound();
   const flip = state.players.find((player) => {
     const entry = round?.entries[player.id];
-    return entry && !entry.bust && entry.source !== "manual" && entry.numbers.length === 7;
+    return entry && !entry.bust && entry.numbers.length === 7;
   });
   if (flip && !roundReady()) notes.push(`${flip.name} fez Flip 7. A rodada acaba para todo mundo.`);
   const over = rows.filter((row) => row.total >= TARGET);
@@ -770,32 +713,24 @@ function banners(rows) {
 
 function calculatorView(player, entry) {
   const score = scoreOf(entry);
-  const display = entry.source === "manual" && entry.typed === "" ? "–" : score.total;
+  const display = score.total;
   const full = entry.numbers.length === 7;
   const slots = Array.from({ length: 7 }, (_, i) => {
     const n = entry.numbers[i];
     return n === undefined ? `<span class="slot"></span>` : `<span class="slot on" style="--ink:${CARDS[n].ink}">${n}</span>`;
   }).join("");
-  const hand =
-    entry.source === "manual"
-      ? `<p class="count">total digitado</p>`
-      : `<div class="hand${full ? " flip" : ""}" role="img" aria-label="${entry.numbers.length} de 7 números">${slots}</div>`;
+  const hand = `<div class="hand${full ? " flip" : ""}" role="img" aria-label="${entry.numbers.length} de 7 números">${slots}</div>`;
   const mods = MODS.map((mod) => {
     const owner = ownerOf("bonus", mod.v);
     const on = entry.bonuses.includes(mod.v);
     return `<button type="button" class="mod${on ? " on" : ""}${owner ? " taken" : ""}" style="--ink:${mod.ink}" data-action="toggle-bonus" data-n="${mod.v}" data-focus="bonus-${mod.v}" aria-pressed="${on}" aria-label="Modificador +${mod.v}${owner ? `, com ${esc(owner.name)}` : ""}" title="${owner ? `Com ${owner.name}` : `+${mod.v}`}">${modArtSvg(`+${mod.v}`)}</button>`;
   }).join("");
   const xOwner = ownerOf("x2");
-  const entryBody =
-    entry.source === "manual"
-      ? `<div class="entry"><div class="pad">${[1, 2, 3, 4, 5, 6, 7, 8, 9]
-          .map((digit) => `<button type="button" data-action="digit" data-d="${digit}" data-focus="d-${digit}">${digit}</button>`)
-          .join("")}<button type="button" data-action="digit" data-d="0" data-focus="d-0">0</button><button type="button" class="wide" data-action="backspace" data-focus="backspace" aria-label="Apagar dígito">apagar</button></div></div>`
-      : `<div class="entry${full ? " full" : ""}"><div class="grid">${CARDS.slice(0, 10)
-          .map((card) => cardButton(card, entry.numbers.includes(card.n)))
-          .join("")}</div><div class="grid three">${CARDS.slice(10)
-          .map((card) => cardButton(card, entry.numbers.includes(card.n)))
-          .join("")}</div><div class="mods">${mods}<button type="button" class="mod x2${entry.x2 ? " on" : ""}${xOwner ? " taken" : ""}" style="--ink:#d9383a" data-action="toggle-x2" data-focus="x2" aria-pressed="${entry.x2}" aria-label="Vezes 2${xOwner ? `, com ${esc(xOwner.name)}` : ""}">${modArtSvg("×2")}</button></div><p class="legend">×2 dobra os números. Os + entram depois. 7 números: +15.</p></div>`;
+  const entryBody = `<div class="entry${full ? " full" : ""}"><div class="grid">${CARDS.slice(0, 10)
+    .map((card) => cardButton(card, entry.numbers.includes(card.n)))
+    .join("")}</div><div class="grid three">${CARDS.slice(10)
+    .map((card) => cardButton(card, entry.numbers.includes(card.n)))
+    .join("")}</div><div class="mods">${mods}<button type="button" class="mod x2${entry.x2 ? " on" : ""}${xOwner ? " taken" : ""}" style="--ink:#d9383a" data-action="toggle-x2" data-focus="x2" aria-pressed="${entry.x2}" aria-label="Vezes 2${xOwner ? `, com ${esc(xOwner.name)}` : ""}">${modArtSvg("×2")}</button></div><p class="legend">×2 dobra os números. Os + entram depois. 7 números: +15.</p></div>`;
   return `<section class="calc${entry.bust ? " bust" : ""}">
     <div class="hand-head">
       <div class="hand-info">
@@ -806,10 +741,6 @@ function calculatorView(player, entry) {
     </div>
     <p class="formula">${formula(entry, score)}</p>
     ${state.hint ? `<p class="warn" role="status">${esc(state.hint)}</p>` : ""}
-    <div class="tabs" role="tablist" aria-label="Como lançar">
-      <button type="button" role="tab" aria-selected="${entry.source !== "manual"}" data-action="mode" data-mode="cards">Cartas</button>
-      <button type="button" role="tab" aria-selected="${entry.source === "manual"}" data-action="mode" data-mode="manual">Digitar</button>
-    </div>
     ${entryBody}
   </section>`;
 }
@@ -1056,9 +987,6 @@ function handle(action, target) {
   if (action === "toggle-number") return toggleNumber(target.dataset.n);
   if (action === "toggle-bonus") return toggleBonus(target.dataset.n);
   if (action === "toggle-x2") return toggleX2();
-  if (action === "mode") return setMode(target.dataset.mode);
-  if (action === "digit") return typeDigit(target.dataset.d);
-  if (action === "backspace") return backspace();
   if (action === "clear") return clearActive();
   if (action === "confirm") return confirmActive();
   if (action === "bust") return bustActive();
@@ -1102,14 +1030,7 @@ function onKey(event) {
   if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
     event.preventDefault();
     selectRelative(-1);
-    return;
   }
-  if (activeEntry().source === "manual" && event.key === "Backspace") {
-    event.preventDefault();
-    backspace();
-    return;
-  }
-  if (activeEntry().source === "manual" && /^[0-9]$/.test(event.key)) typeDigit(event.key);
 }
 
 function init() {
