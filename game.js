@@ -203,7 +203,8 @@ function giveCard(s, id, card, autoTarget) {
       addLog(s, `${nameOf(s, id)} estourou no ${card.n}`);
       return "bust";
     }
-    h.numbers = [...h.numbers, card.n].sort((a, b) => a - b);
+    // Guarda na ordem em que a carta foi comprada.
+    h.numbers = [...h.numbers, card.n];
     if (h.numbers.length === 7) {
       addLog(s, `${nameOf(s, id)} fechou o Flip 7`);
       return "flip7";
