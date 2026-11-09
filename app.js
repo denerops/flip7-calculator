@@ -1,5 +1,5 @@
 const TARGET = 200;
-const FLIP_BONUS = 15;
+const FLIP_BONUS = 30;
 const STORAGE_KEY = "flip7-marcador-v1";
 const INSTALL_SKIP = "flip7-install-skip";
 
@@ -113,11 +113,11 @@ function selfCheck() {
     [{ ...empty, numbers: [3, 5, 7, 10, 11], x2: true }, 72],
     [{ ...empty, numbers: [3, 5, 7, 10, 11], bonuses: [10] }, 46],
     [{ ...empty, numbers: [3, 5, 9, 11], x2: true, bonuses: [6] }, 62],
-    [{ ...empty, numbers: [0, 1, 2, 3, 4, 5, 6] }, 36],
+    [{ ...empty, numbers: [0, 1, 2, 3, 4, 5, 6] }, 51],
     [{ ...empty, bonuses: [10] }, 10],
     [{ ...empty, x2: true, bonuses: [10] }, 10],
     [{ ...empty, numbers: [12, 11, 10], bust: true }, 0],
-    [{ ...empty, numbers: [12, 11, 10, 9, 8, 7, 6], x2: true, bonuses: [2, 4, 6, 8, 10] }, 171],
+    [{ ...empty, numbers: [12, 11, 10, 9, 8, 7, 6], x2: true, bonuses: [2, 4, 6, 8, 10] }, 186],
   ];
   for (const [entry, total] of cases) {
     const got = scoreOf(entry).total;
@@ -617,7 +617,7 @@ function detail(entry) {
   if (entry.numbers.length) bits.push(entry.numbers.join("+"));
   if (entry.x2) bits.push("×2");
   if (entry.bonuses.length) bits.push(entry.bonuses.map((n) => `+${n}`).join(" "));
-  if (entry.numbers.length === 7) bits.push("+15");
+  if (entry.numbers.length === 7) bits.push(`+${FLIP_BONUS}`);
   return bits.join(" ") || "0";
 }
 
@@ -627,7 +627,7 @@ function formula(entry, score) {
   if (entry.numbers.length) bits.push(`<span>${entry.numbers.join(" + ")} = ${score.numbersSum}</span>`);
   if (entry.x2) bits.push(`<span>×2 = ${score.afterX2}</span>`);
   if (entry.bonuses.length) bits.push(`<span>${entry.bonuses.map((n) => `+${n}`).join(" ")}</span>`);
-  if (score.flip7) bits.push(`<span class="pill">Flip 7 +15</span>`);
+  if (score.flip7) bits.push(`<span class="pill">Flip 7 +${FLIP_BONUS}</span>`);
   return bits.join("");
 }
 

@@ -7,7 +7,7 @@ No fim da rodada, toque as cartas de cada mão. A conta segue a ordem do jogo:
 1. soma dos números
 2. ×2, se a carta estiver na mão (dobra só os números)
 3. modificadores +2, +4, +6, +8 e +10
-4. +15 se saíram 7 números diferentes
+4. +30 se saíram 7 números diferentes
 
 Quem estourou fica com 0. O placar se ordena na hora. A partida fecha quando alguém passa de 200 e fica sozinho na frente.
 
