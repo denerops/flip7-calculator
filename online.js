@@ -11,8 +11,8 @@ export const view = { screen: "start", roomDraft: "", error: "", dialog: null, c
 const room = store.store;
 const canShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
 // Quanto tempo a mão de quem comprou fica na tela e quanto a carta revelada demora.
-const HOLD_MS = 2800;
-const REVEAL_MS = 3200;
+const HOLD_MS = 1700;
+const REVEAL_MS = 2100;
 
 let rerender = () => {};
 let seenCode = "";
