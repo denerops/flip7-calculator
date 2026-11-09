@@ -1,4 +1,4 @@
-const CACHE = "flip7-marcador-v2";
+const CACHE = "flip7-marcador-v3";
 
 const ASSETS = [
   "./",
@@ -37,7 +37,7 @@ self.addEventListener("activate", (event) => {
 async function networkFirst(request) {
   const cache = await caches.open(CACHE);
   try {
-    const response = await fetch(request);
+    const response = await fetch(request, { cache: "no-cache" });
     if (response.ok) cache.put(request, response.clone());
     return response;
   } catch {

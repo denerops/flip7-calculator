@@ -3,27 +3,27 @@ const FLIP_BONUS = 15;
 const STORAGE_KEY = "flip7-marcador-v1";
 
 const CARDS = [
-  { n: 0, name: "Zero", ink: "#1c1c1c", shell: "#3d8a52" },
-  { n: 1, name: "Um", ink: "#b46316", shell: "#d64532" },
-  { n: 2, name: "Dois", ink: "#8a3474", shell: "#c6a422" },
-  { n: 3, name: "Três", ink: "#d3262f", shell: "#e06a2c" },
-  { n: 4, name: "Quatro", ink: "#0e7380", shell: "#3d8a52" },
-  { n: 5, name: "Cinco", ink: "#2d8a34", shell: "#3d8a52" },
-  { n: 6, name: "Seis", ink: "#c41260", shell: "#8a3d9a" },
-  { n: 7, name: "Sete", ink: "#d3262f", shell: "#c43b8a" },
-  { n: 8, name: "Oito", ink: "#6c7014", shell: "#d6b423" },
-  { n: 9, name: "Nove", ink: "#d26512", shell: "#e07a28" },
-  { n: 10, name: "Dez", ink: "#d3262f", shell: "#d64532" },
-  { n: 11, name: "Onze", ink: "#55649a", shell: "#5a6aaa" },
-  { n: 12, name: "Doze", ink: "#8a6230", shell: "#a67a40" },
+  { n: 0, name: "Zero", ink: "#d9383a" },
+  { n: 1, name: "Um", ink: "#d89648" },
+  { n: 2, name: "Dois", ink: "#c8d627" },
+  { n: 3, name: "Três", ink: "#de4982" },
+  { n: 4, name: "Quatro", ink: "#47b5d6" },
+  { n: 5, name: "Cinco", ink: "#28ae52" },
+  { n: 6, name: "Seis", ink: "#8951a4" },
+  { n: 7, name: "Sete", ink: "#e25038" },
+  { n: 8, name: "Oito", ink: "#76be43" },
+  { n: 9, name: "Nove", ink: "#ee9433" },
+  { n: 10, name: "Dez", ink: "#dc2929" },
+  { n: 11, name: "Onze", ink: "#7381b8" },
+  { n: 12, name: "Doze", ink: "#8d8078" },
 ];
 
 const MODS = [
-  { v: 2, ink: "#2d6a3a" },
-  { v: 4, ink: "#0e7380" },
-  { v: 6, ink: "#a33b12" },
-  { v: 8, ink: "#6a6414" },
-  { v: 10, ink: "#c2302a" },
+  { v: 2, ink: "#e35336" },
+  { v: 4, ink: "#e35336" },
+  { v: 6, ink: "#e35336" },
+  { v: 8, ink: "#e35336" },
+  { v: 10, ink: "#d9383a" },
 ];
 
 let deferredInstall = null;
@@ -645,19 +645,103 @@ function formula(entry, score) {
   return bits.join("");
 }
 
-const SHELL_SVG = `<svg viewBox="0 0 64 56" aria-hidden="true"><path fill="currentColor" d="M6 42c3-20 14-32 26-34 12 2 23 14 26 34-9-9-18-12-26-12S15 33 6 42z"/><path fill="currentColor" d="M32 50c-4 0-6-2.4-6-5h12c0 2.6-2 5-6 5z"/><path fill="none" stroke="#fff" stroke-opacity=".72" stroke-width="1.6" stroke-linecap="round" d="M32 14v18M23 16c3 8 6 12 9 15M41 16c-3 8-6 12-9 15M16 22c6 6 11 8 16 8M48 22c-6 6-11 8-16 8"/></svg>`;
+function cardArtSvg(card) {
+  const two = card.n > 9;
+  const fs = two ? 54 : 64;
+  const ls = card.name.length > 5 ? 9.5 : 10.6;
+  return `<svg class="card-svg" viewBox="0 0 100 134" aria-hidden="true">
+    <!-- Top & bottom colored arches -->
+    <path d="M32 0 A18 18 0 0 0 68 0 Z" fill="var(--ink)" stroke="#231f28" stroke-width="1.8"/>
+    <path d="M38 0 A12 12 0 0 0 62 0 Z" fill="#f6eed8" stroke="#231f28" stroke-width="1.5"/>
+    <path d="M32 134 A18 18 0 0 1 68 134 Z" fill="var(--ink)" stroke="#231f28" stroke-width="1.8"/>
+    <path d="M38 134 A12 12 0 0 1 62 134 Z" fill="#f6eed8" stroke="#231f28" stroke-width="1.5"/>
 
-function cardInnards(card) {
-  const two = card.n > 9 ? " two" : "";
-  return `<span class="notch" aria-hidden="true"></span><span class="frame" aria-hidden="true"></span><span class="num${two}">${card.n}</span><span class="plate"><span class="shell">${SHELL_SVG}</span><span class="label">${esc(card.name)}</span><span class="shell">${SHELL_SVG}</span></span>`;
+    <!-- Stepped Art Deco gold ribbon frame -->
+    <path fill="#f1dd93" stroke="#231f28" stroke-width="1.5" stroke-linejoin="miter"
+      d="M19 7 H35 V11.5 H23 V17.5 H14.5 V116.5 H23 V122.5 H35 V127 H19 V121 H10.5 V13 H19 Z
+         M81 7 H65 V11.5 H77 V17.5 H85.5 V116.5 H77 V122.5 H65 V127 H81 V121 H89.5 V13 H81 Z"/>
+    <rect x="14.5" y="13" width="71" height="108" fill="none" stroke="#231f28" stroke-width="1.3"/>
+
+    <!-- Top & bottom arch dark rocker bands -->
+    <path d="M34 9.5 Q50 18.5 66 9.5" fill="none" stroke="#231f28" stroke-width="3.2" stroke-linecap="round"/>
+    <path d="M34 124.5 Q50 115.5 66 124.5" fill="none" stroke="#231f28" stroke-width="3.2" stroke-linecap="round"/>
+
+    <!-- Left & right edge fluted scallop shells -->
+    <g stroke="#231f28" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round">
+      <!-- Left shell: cream scalloped rim + colored fluted petals fanning from hinge (0,68) -->
+      <path d="M0 32 Q11 32 14 39 Q19 41 19 47 Q22 51 20 57 Q21 63 17 68 Q14 74 0 76 Z" fill="#f6eed8"/>
+      <path d="M0 35.5 Q9 35.5 11.5 40.5 Q16 42.5 16 47.5 Q18.5 51.5 17 56.5 Q17.5 61.5 14 66 Q11 71 0 72.5 Z" fill="var(--ink)"/>
+      <path d="M0 66 L11.5 40.5 M0 66 L16 47.5 M0 66 L17 56.5 M0 66 L14 66" stroke="#231f28" stroke-width="1.15"/>
+
+      <!-- Right shell: mirror fluted petals fanning from hinge (100,68) -->
+      <path d="M100 32 Q89 32 86 39 Q81 41 81 47 Q78 51 80 57 Q79 63 83 68 Q86 74 100 76 Z" fill="#f6eed8"/>
+      <path d="M100 35.5 Q91 35.5 88.5 40.5 Q84 42.5 84 47.5 Q81.5 51.5 83 56.5 Q82.5 61.5 86 66 Q89 71 100 72.5 Z" fill="var(--ink)"/>
+      <path d="M100 66 L88.5 40.5 M100 66 L84 47.5 M100 66 L83 56.5 M100 66 L86 66" stroke="#231f28" stroke-width="1.15"/>
+    </g>
+
+    <!-- Barber-pole pillar cuffs above banner -->
+    <g fill="#f6eed8" stroke="#231f28" stroke-width="1.3">
+      <rect x="9.5" y="78.5" width="6.2" height="13.5" rx="1"/>
+      <line x1="9.5" y1="82.5" x2="15.7" y2="79.5"/>
+      <line x1="9.5" y1="87" x2="15.7" y2="84"/>
+      <line x1="9.5" y1="91.5" x2="15.7" y2="88.5"/>
+      <rect x="84.3" y="78.5" width="6.2" height="13.5" rx="1"/>
+      <line x1="84.3" y1="79.5" x2="90.5" y2="82.5"/>
+      <line x1="84.3" y1="84" x2="90.5" y2="87"/>
+      <line x1="84.3" y1="88.5" x2="90.5" y2="91.5"/>
+    </g>
+
+    <!-- 3-layer Art Deco number: outer dark ink, cream inline gap, vibrant colored fill -->
+    <g class="svg-num" font-family="'Bebas Neue', Impact, sans-serif" font-size="${fs}" text-anchor="middle" dominant-baseline="central" paint-order="stroke fill">
+      <text x="51" y="54.5" fill="#231f28" stroke="#231f28" stroke-width="9.5" stroke-linejoin="round">${card.n}</text>
+      <text x="50" y="53" fill="#231f28" stroke="#231f28" stroke-width="9.5" stroke-linejoin="round">${card.n}</text>
+      <text x="50" y="53" fill="#f6eed8" stroke="#f6eed8" stroke-width="5.2" stroke-linejoin="round">${card.n}</text>
+      <text x="50" y="53" fill="var(--ink)" stroke="#231f28" stroke-width="2" stroke-linejoin="round">${card.n}</text>
+    </g>
+
+    <!-- Nameplate ribbon banner -->
+    <path d="M7.5 91.5 Q50 94.5 92.5 91.5 L90.5 109.5 Q50 112.5 9.5 109.5 Z" fill="#f8f1df" stroke="#231f28" stroke-width="1.6" stroke-linejoin="round"/>
+    <text x="50" y="101.5" font-family="Outfit, sans-serif" font-weight="800" font-size="${ls}" letter-spacing="0.8" fill="#231f28" text-anchor="middle" dominant-baseline="central">${esc(card.name.toUpperCase())}</text>
+  </svg>`;
+}
+
+function modArtSvg(label) {
+  return `<svg class="mod-svg" viewBox="0 0 100 84" aria-hidden="true">
+    <path d="M34 0 A16 16 0 0 0 66 0 Z" fill="#d9383a" stroke="#231f28" stroke-width="1.8"/>
+    <path d="M39.5 0 A10.5 10.5 0 0 0 60.5 0 Z" fill="#f6eed8" stroke="#231f28" stroke-width="1.4"/>
+    <path d="M34 84 A16 16 0 0 1 66 84 Z" fill="#d9383a" stroke="#231f28" stroke-width="1.8"/>
+    <path d="M39.5 84 A10.5 10.5 0 0 1 60.5 84 Z" fill="#f6eed8" stroke="#231f28" stroke-width="1.4"/>
+    <path fill="#f4df95" stroke="#231f28" stroke-width="1.4"
+      d="M16 5.5 H35 V9 H20 V14 H11 V70 H20 V75 H35 V78.5 H16 V73 H7 V11 H16 Z
+         M84 5.5 H65 V9 H80 V14 H89 V70 H80 V75 H65 V78.5 H84 V73 H93 V11 H84 Z"/>
+    <path d="M34 19 Q38 12 43 13 Q50 9 57 13 Q62 12 66 19 Z" fill="#f6eed8" stroke="#231f28" stroke-width="1.3"/>
+    <path d="M37 19 Q41 13.5 50 12 Q59 13.5 63 19 Z" fill="#e35336" stroke="#231f28" stroke-width="1.2"/>
+    <path d="M50 19 L43 13.5 M50 19 L50 12 M50 19 L57 13.5" stroke="#231f28" stroke-width="1.1"/>
+    <path d="M34 65 Q38 72 43 71 Q50 75 57 71 Q62 72 66 65 Z" fill="#f6eed8" stroke="#231f28" stroke-width="1.3"/>
+    <path d="M37 65 Q41 70.5 50 72 Q59 70.5 63 65 Z" fill="#e35336" stroke="#231f28" stroke-width="1.2"/>
+    <path d="M50 65 L43 70.5 M50 65 L50 72 M50 65 L57 70.5" stroke="#231f28" stroke-width="1.1"/>
+    <g font-family="'Bebas Neue', Impact, sans-serif" font-size="38" text-anchor="middle" dominant-baseline="central" paint-order="stroke fill">
+      <text x="51" y="43.5" fill="#231f28" stroke="#231f28" stroke-width="8" stroke-linejoin="round">${label}</text>
+      <text x="50" y="42.5" fill="#231f28" stroke="#231f28" stroke-width="8" stroke-linejoin="round">${label}</text>
+      <text x="50" y="42.5" fill="#f8f1df" stroke="#f8f1df" stroke-width="4.4" stroke-linejoin="round">${label}</text>
+      <text x="50" y="42.5" fill="var(--ink)" stroke="#231f28" stroke-width="1.8" stroke-linejoin="round">${label}</text>
+    </g>
+  </svg>`;
 }
 
 function cardButton(card, pressed) {
-  return `<button type="button" class="card${pressed ? " on" : ""}" style="--ink:${card.ink};--shell:${card.shell}" data-action="toggle-number" data-n="${card.n}" data-focus="n-${card.n}" aria-pressed="${pressed}" aria-label="${card.n}, ${esc(card.name)}">${cardInnards(card)}</button>`;
+  return `<button type="button" class="card${pressed ? " on" : ""}" style="--ink:${card.ink}" data-action="toggle-number" data-n="${card.n}" data-focus="n-${card.n}" aria-pressed="${pressed}" aria-label="${card.n}, ${esc(card.name)}">${cardArtSvg(card)}</button>`;
 }
 
 function cardFace(card, extra) {
-  return `<div class="card ${extra}" style="--ink:${card.ink};--shell:${card.shell}" aria-hidden="true">${cardInnards(card)}</div>`;
+  return `<div class="card ${extra}" style="--ink:${card.ink}" aria-hidden="true">${cardArtSvg(card)}</div>`;
+}
+
+function heroHand() {
+  const hand = [CARDS[2], CARDS[7], CARDS[10]];
+  return `<div class="hero-hand" aria-hidden="true">${hand
+    .map((card, i) => cardFace(card, `hero hero-${i}`))
+    .join("")}</div>`;
 }
 
 function boardTable(rows) {
@@ -727,7 +811,7 @@ function calculatorView(player, entry) {
   const mods = MODS.map((mod) => {
     const owner = ownerOf("bonus", mod.v);
     const on = entry.bonuses.includes(mod.v);
-    return `<button type="button" class="mod${on ? " on" : ""}${owner ? " taken" : ""}" style="--ink:${mod.ink}" data-action="toggle-bonus" data-n="${mod.v}" data-focus="bonus-${mod.v}" aria-pressed="${on}" aria-label="Modificador +${mod.v}${owner ? `, com ${esc(owner.name)}` : ""}" title="${owner ? `Com ${owner.name}` : `+${mod.v}`}">+${mod.v}</button>`;
+    return `<button type="button" class="mod${on ? " on" : ""}${owner ? " taken" : ""}" style="--ink:${mod.ink}" data-action="toggle-bonus" data-n="${mod.v}" data-focus="bonus-${mod.v}" aria-pressed="${on}" aria-label="Modificador +${mod.v}${owner ? `, com ${esc(owner.name)}` : ""}" title="${owner ? `Com ${owner.name}` : `+${mod.v}`}">${modArtSvg(`+${mod.v}`)}</button>`;
   }).join("");
   const xOwner = ownerOf("x2");
   const entryBody =
@@ -739,11 +823,15 @@ function calculatorView(player, entry) {
           .map((card) => cardButton(card, entry.numbers.includes(card.n)))
           .join("")}</div><div class="grid three">${CARDS.slice(10)
           .map((card) => cardButton(card, entry.numbers.includes(card.n)))
-          .join("")}</div><div class="mods">${mods}<button type="button" class="mod${entry.x2 ? " on" : ""}${xOwner ? " taken" : ""}" style="--ink:#241c16" data-action="toggle-x2" data-focus="x2" aria-pressed="${entry.x2}" aria-label="Vezes 2${xOwner ? `, com ${esc(xOwner.name)}` : ""}">×2</button></div><p class="legend">×2 dobra os números. Os + entram depois. 7 números: +15.</p></div>`;
+          .join("")}</div><div class="mods">${mods}<button type="button" class="mod x2${entry.x2 ? " on" : ""}${xOwner ? " taken" : ""}" style="--ink:#d9383a" data-action="toggle-x2" data-focus="x2" aria-pressed="${entry.x2}" aria-label="Vezes 2${xOwner ? `, com ${esc(xOwner.name)}` : ""}">${modArtSvg("×2")}</button></div><p class="legend">×2 dobra os números. Os + entram depois. 7 números: +15.</p></div>`;
   return `<section class="calc${entry.bust ? " bust" : ""}">
-    <div class="who"><p>Vez de <strong>${esc(player.name)}</strong></p>${count}</div>
-    <div class="score${score.flip7 ? " flip" : ""}${entry.bust ? " bust" : ""}"><b>${display}</b><span>nesta rodada</span></div>
-    <p class="formula">${formula(entry, score)}</p>
+    <div class="hand-head">
+      <div class="hand-info">
+        <div class="who"><p>Vez de <strong>${esc(player.name)}</strong></p>${count}</div>
+        <p class="formula">${formula(entry, score)}</p>
+      </div>
+      <div class="score${score.flip7 ? " flip" : ""}${entry.bust ? " bust" : ""}"><b>${display}</b><span>nesta rodada</span></div>
+    </div>
     ${state.hint ? `<p class="warn" role="status">${esc(state.hint)}</p>` : ""}
     <div class="tabs" role="tablist" aria-label="Como lançar">
       <button type="button" role="tab" aria-selected="${entry.source !== "manual"}" data-action="mode" data-mode="cards">Cartas</button>
@@ -829,7 +917,7 @@ function setupView() {
       ? `<p class="fine">Para usar em tela cheia: Compartilhar, depois Adicionar à Tela de Início.</p>`
       : "";
   return `<main class="setup">
-    <div class="hero-wrap">${cardFace(sete, "hero")}</div>
+    ${heroHand()}
     <p class="eyebrow">Marcador de mesa</p>
     <h1>Flip 7</h1>
     <p class="lede">Cadastre a mesa. No fim da rodada, toque as cartas de cada mão — a conta e a ordem do placar saem na hora.</p>
@@ -862,7 +950,7 @@ function victoryView() {
     )
     .join("");
   return `<main class="victory">
-    <div class="hero-wrap">${cardFace(sete, "hero")}</div>
+    ${heroHand()}
     <p class="eyebrow">Fim de jogo</p>
     <h1>${esc(winner.name)} venceu</h1>
     <p class="win-score">${winner.total}</p>

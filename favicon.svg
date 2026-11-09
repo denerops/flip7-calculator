@@ -1,6 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#c2302a"/>
-  <rect x="7" y="7" width="50" height="50" rx="8" fill="#fbf6ea"/>
-  <rect x="11" y="11" width="42" height="42" rx="6" fill="none" stroke="#c2302a" stroke-width="2"/>
-  <path d="M20 24h26L30 50" fill="none" stroke="#c2302a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect width="64" height="64" rx="14" fill="#f6eed8" stroke="#231f28" stroke-width="3"/>
+  <path d="M20 0 A12 12 0 0 0 44 0 Z" fill="#e25038" stroke="#231f28" stroke-width="2"/>
+  <path d="M20 64 A12 12 0 0 1 44 64 Z" fill="#e25038" stroke="#231f28" stroke-width="2"/>
+  <rect x="7" y="7" width="50" height="50" rx="6" fill="none" stroke="#c9a648" stroke-width="3"/>
+  <rect x="7" y="7" width="50" height="50" rx="6" fill="none" stroke="#231f28" stroke-width="1.5"/>
+  <path d="M21 19h23L29 48" fill="none" stroke="#231f28" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M21 19h23L29 48" fill="none" stroke="#f6eed8" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M21 19h23L29 48" fill="none" stroke="#e25038" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
