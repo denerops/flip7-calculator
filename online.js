@@ -10,7 +10,9 @@ export const view = { screen: "start", roomDraft: "", error: "", dialog: null, c
 
 const room = store.store;
 const canShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
-const HOLD_MS = 1500;
+// Quanto tempo a mão de quem comprou fica na tela e quanto a carta revelada demora.
+const HOLD_MS = 2800;
+const REVEAL_MS = 3200;
 
 let rerender = () => {};
 let seenCode = "";
@@ -552,23 +554,41 @@ function showReveal(last) {
   el.innerHTML = `<div class="reveal-card"><div class="face back">${cardBack()}</div><div class="face front">${anyCard(last.card)}</div></div><p class="reveal-cap">${esc(revealCaption(last))}</p>`;
   document.body.append(el);
   const card = el.querySelector(".reveal-card");
+  const cap = el.querySelector(".reveal-cap");
   const bust = last.result === "bust";
+  const still = calmMotion.matches;
+  // Entra rápido, fica parada na mesa e só então sai: dá tempo de ler a carta.
+  const rest = bust ? "translateY(0) scale(1) rotate(-3deg)" : "translateY(0) scale(1)";
   card.animate(
-    [
-      { transform: "translateY(-60px) scale(0.55) rotateY(180deg)", opacity: 0 },
-      { transform: "translateY(0) scale(1.04) rotateY(180deg)", opacity: 1, offset: 0.22 },
-      { transform: "translateY(0) scale(1.08) rotateY(0deg)", offset: 0.48 },
-      { transform: "translateY(0) scale(1) rotateY(0deg)", offset: 0.6 },
-      { transform: bust ? "translateY(0) scale(1) rotate(-4deg)" : "translateY(0) scale(1)", offset: 0.82 },
-      { transform: "translateY(40px) scale(0.6)", opacity: 0 },
-    ],
-    { duration: 1350, easing: "cubic-bezier(0.3, 0.7, 0.3, 1)", fill: "both" }
+    still
+      ? [{ opacity: 0, offset: 0 }, { opacity: 1, offset: 0.1 }, { opacity: 1, offset: 0.88 }, { opacity: 0, offset: 1 }]
+      : [
+          { transform: "translateY(-70px) scale(0.55) rotateY(180deg)", opacity: 0, offset: 0 },
+          { transform: "translateY(0) scale(1.06) rotateY(180deg)", opacity: 1, offset: 0.1 },
+          { transform: "translateY(0) scale(1.1) rotateY(0deg)", offset: 0.19 },
+          { transform: "translateY(0) scale(1) rotateY(0deg)", offset: 0.26 },
+          { transform: rest, opacity: 1, offset: 0.32 },
+          { transform: bust ? `${rest} scale(1.03)` : "translateY(0) scale(1.03)", opacity: 1, offset: 0.6 },
+          { transform: rest, opacity: 1, offset: 0.88 },
+          { transform: "translateY(34px) scale(0.66)", opacity: 0, offset: 1 },
+        ],
+    { duration: REVEAL_MS, easing: "cubic-bezier(0.3, 0.7, 0.3, 1)", fill: "both" }
   );
-  el.querySelector(".reveal-cap").animate(
-    [{ opacity: 0, translate: "0 10px" }, { opacity: 1, translate: "0 0", offset: 0.4 }, { opacity: 1, offset: 0.82 }, { opacity: 0 }],
-    { duration: 1350, easing: "ease-out", fill: "both" }
+  cap.animate(
+    still
+      ? [{ opacity: 0, offset: 0 }, { opacity: 1, offset: 0.1 }, { opacity: 1, offset: 0.88 }, { opacity: 0, offset: 1 }]
+      : [
+          { opacity: 0, translate: "0 10px", offset: 0 },
+          { opacity: 1, translate: "0 0", offset: 0.16 },
+          { opacity: 1, translate: "0 0", offset: 0.88 },
+          { opacity: 0, translate: "0 8px", offset: 1 },
+        ],
+    { duration: REVEAL_MS, easing: "ease-out", fill: "both" }
   );
-  el.animate([{ opacity: 0 }, { opacity: 1, offset: 0.15 }, { opacity: 1, offset: 0.85 }, { opacity: 0 }], { duration: 1350, fill: "both" }).finished.then(
+  el.animate(
+    [{ opacity: 0, offset: 0 }, { opacity: 1, offset: 0.08 }, { opacity: 1, offset: 0.88 }, { opacity: 0, offset: 1 }],
+    { duration: REVEAL_MS, fill: "both" }
+  ).finished.then(
     () => el.remove(),
     () => el.remove()
   );
