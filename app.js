@@ -1,6 +1,7 @@
 const TARGET = 200;
 const FLIP_BONUS = 15;
 const STORAGE_KEY = "flip7-marcador-v1";
+const INSTALL_SKIP = "flip7-install-skip";
 
 const CARDS = [
   { n: 0, name: "Zero", ink: "#d9383a" },
@@ -555,16 +556,56 @@ function rematch() {
   commit();
 }
 
-async function installApp() {
-  if (!deferredInstall) return;
-  deferredInstall.prompt();
+function runningInstalled() {
+  return matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: fullscreen)").matches || navigator.standalone === true;
+}
+
+function onIos() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+function skippedInstall() {
   try {
-    await deferredInstall.userChoice;
+    return sessionStorage.getItem(INSTALL_SKIP) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function rememberInstallSkip() {
+  try {
+    sessionStorage.setItem(INSTALL_SKIP, "1");
+  } catch {
+    /* navegador sem sessão */
+  }
+}
+
+function offerInstall() {
+  if (runningInstalled() || skippedInstall() || state.dialog) return;
+  if (!deferredInstall && !onIos()) return;
+  state.dialog = "install";
+  render();
+}
+
+function closeDialog() {
+  if (state.dialog === "install") rememberInstallSkip();
+  state.dialog = null;
+  commit();
+}
+
+async function installApp() {
+  const promptEvent = deferredInstall;
+  if (!promptEvent) return;
+  rememberInstallSkip();
+  deferredInstall = null;
+  state.dialog = null;
+  commit();
+  try {
+    promptEvent.prompt();
+    await promptEvent.userChoice;
   } catch {
     /* instalação cancelada */
   }
-  deferredInstall = null;
-  commit();
 }
 
 function detail(entry) {
@@ -819,11 +860,7 @@ function setupView() {
           })
           .join("")}</ul>`;
   const install = deferredInstall ? `<button type="button" class="ghost xl" data-action="install">Instalar o app</button>` : "";
-  const ios =
-    (/iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)) &&
-    !(navigator.standalone || matchMedia("(display-mode: standalone)").matches)
-      ? `<p class="fine">Para usar em tela cheia: Compartilhar, depois Adicionar à Tela de Início.</p>`
-      : "";
+  const ios = onIos() && !runningInstalled() ? `<p class="fine">Para usar em tela cheia: Compartilhar, depois Adicionar à Tela de Início.</p>` : "";
   return `<main class="setup">
     ${heroHand()}
     <p class="eyebrow">Marcador de mesa</p>
@@ -890,12 +927,17 @@ function dialogView() {
     body = `<h2 id="sheet-title">Placar</h2>${boardTable(rows)}<button type="button" class="wide" data-action="open-menu">Voltar</button>`;
   } else if (state.dialog === "reset") {
     body = `<h2 id="sheet-title">Nova partida</h2><p>Apagar os pontos desta partida? Os nomes continuam na mesa.</p><div class="pair"><button type="button" class="ghost" data-action="dismiss">Cancelar</button><button type="button" class="primary" data-action="reset">Apagar</button></div>`;
+  } else if (state.dialog === "install") {
+    const share = `<svg class="share" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M7.8 7.4 12 3.2l4.2 4.2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 11.5V19h12v-7.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    body = deferredInstall
+      ? `<h2 id="sheet-title">Instalar o Flip 7</h2><p>Fica na tela inicial e abre em tela cheia, como um app.</p><div class="pair"><button type="button" class="ghost" data-action="skip-install">Agora não</button><button type="button" class="primary" data-action="install" autofocus>Instalar</button></div>`
+      : `<h2 id="sheet-title">Instalar o Flip 7</h2><p>Toque em Compartilhar ${share} e depois em <strong>Adicionar à Tela de Início</strong>.</p><button type="button" class="primary wide" data-action="skip-install" autofocus>Entendi</button>`;
   }
   return `<div class="modal" data-action="backdrop"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">${body}</div></div>`;
 }
 
 function view() {
-  if (state.screen === "setup") return setupView();
+  if (state.screen === "setup") return setupView() + dialogView();
   if (state.screen === "victory") return victoryView() + dialogView();
   return playView() + dialogView();
 }
@@ -1158,7 +1200,7 @@ function render() {
     state._focus = "";
   } else if (state.dialog !== lastDialog) {
     lastDialog = state.dialog;
-    if (state.dialog) document.querySelector(".sheet button, .sheet input")?.focus({ preventScroll: true });
+    if (state.dialog) (document.querySelector(".sheet [autofocus]") || document.querySelector(".sheet button, .sheet input"))?.focus({ preventScroll: true });
   }
   if (focusKey && !state.dialog) {
     document.querySelector(`[data-focus="${CSS.escape(focusKey)}"]`)?.focus({ preventScroll: true });
@@ -1175,16 +1217,7 @@ function render() {
 }
 
 function handle(action, target) {
-  if (action === "backdrop") {
-    state.dialog = null;
-    commit();
-    return;
-  }
-  if (action === "dismiss") {
-    state.dialog = null;
-    commit();
-    return;
-  }
+  if (action === "backdrop" || action === "dismiss" || action === "skip-install") return closeDialog();
   if (action === "open-menu") {
     state.dialog = "menu";
     state.hint = "";
@@ -1223,10 +1256,7 @@ function onKey(event) {
   if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
   if (event.repeat) return;
   if (state.dialog) {
-    if (event.key === "Escape") {
-      state.dialog = null;
-      commit();
-    }
+    if (event.key === "Escape") closeDialog();
     return;
   }
   if (state.screen !== "play") return;
@@ -1284,9 +1314,16 @@ function init() {
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
     deferredInstall = event;
+    offerInstall();
+    if (state.dialog !== "install") render();
+  });
+  window.addEventListener("appinstalled", () => {
+    deferredInstall = null;
+    if (state.dialog === "install") state.dialog = null;
     render();
   });
   render();
+  offerInstall();
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});
 }
 
