@@ -29,6 +29,9 @@ const MODS = [
 
 let deferredInstall = null;
 let toastTimer = 0;
+let toastGone = 0;
+const TOAST_HOLD = 2200;
+const TOAST_LEAVE = 280;
 let lastScreen = null;
 let lastDialog = null;
 let shownActive = null;
@@ -1207,13 +1210,24 @@ function render() {
   }
   animateChanges(before);
   clearTimeout(toastTimer);
-  if (state.toast || (state.hint && state.screen === "play")) {
-    toastTimer = setTimeout(() => {
-      state.toast = null;
-      state.hint = "";
-      render();
-    }, 5000);
+  clearTimeout(toastGone);
+  if (state.toast || (state.hint && state.screen === "play")) toastTimer = setTimeout(dismissFloat, TOAST_HOLD);
+}
+
+function dismissFloat() {
+  const float = document.querySelector(".float");
+  if (!float || calmMotion.matches) {
+    state.toast = null;
+    state.hint = "";
+    render();
+    return;
   }
+  float.classList.add("leave");
+  toastGone = setTimeout(() => {
+    state.toast = null;
+    state.hint = "";
+    render();
+  }, TOAST_LEAVE);
 }
 
 function handle(action, target) {

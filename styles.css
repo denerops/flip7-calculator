@@ -798,6 +798,9 @@ button:disabled { opacity: 0.38; cursor: default; }
 @keyframes rise {
   from { translate: 0 18px; opacity: 0; }
 }
+@keyframes sink {
+  to { translate: 0 14px; opacity: 0; }
+}
 @keyframes drop {
   from { translate: 0 -16px; opacity: 0; }
 }
@@ -858,6 +861,7 @@ button:disabled { opacity: 0.38; cursor: default; }
 
 .sum.arrive .sum-row { animation: rise 0.45s var(--ease-out) calc(var(--i) * 70ms) both; }
 .float.arrive > * { animation: rise 0.3s var(--spring) both; }
+.float.leave > * { animation: sink 0.28s var(--ease-out) forwards; }
 .roster li.arrive { animation: slide-in 0.35s var(--ease-out) both; }
 .modal.arrive { animation: fade 0.22s ease both; }
 .modal.arrive .sheet { animation: rise 0.34s var(--ease-out) both; }
