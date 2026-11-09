@@ -3,40 +3,17 @@ const FLIP_BONUS = 30;
 const STORAGE_KEY = "flip7-marcador-v1";
 const INSTALL_SKIP = "flip7-install-skip";
 
+import { CARDS, MODS, esc, modArtSvg, cardArtSvg, heroHand, brandMark } from "./art.js";
+import { calmMotion, EASE, countUp, confetti, flyPoints, flash, buzz } from "./fx.js";
 import * as onlineModule from "./online.js";
 import * as roomModule from "./room.js";
 import * as gameModule from "./game.js";
 import * as api from "./net.js";
 
-const CARDS = [
-  { n: 0, name: "Zero", ink: "#d9383a" },
-  { n: 1, name: "Um", ink: "#d89648" },
-  { n: 2, name: "Dois", ink: "#c8d627" },
-  { n: 3, name: "Três", ink: "#de4982" },
-  { n: 4, name: "Quatro", ink: "#47b5d6" },
-  { n: 5, name: "Cinco", ink: "#28ae52" },
-  { n: 6, name: "Seis", ink: "#8951a4" },
-  { n: 7, name: "Sete", ink: "#e25038" },
-  { n: 8, name: "Oito", ink: "#76be43" },
-  { n: 9, name: "Nove", ink: "#ee9433" },
-  { n: 10, name: "Dez", ink: "#dc2929" },
-  { n: 11, name: "Onze", ink: "#7381b8" },
-  { n: 12, name: "Doze", ink: "#8d8078" },
-];
-
-const MODS = [
-  { v: 2, ink: "#e35336" },
-  { v: 4, ink: "#e35336" },
-  { v: 6, ink: "#e35336" },
-  { v: 8, ink: "#e35336" },
-  { v: 10, ink: "#d9383a" },
-];
-
 let deferredInstall = null;
 let toastTimer = 0;
 let toastGone = 0;
 let mode = "marker";
-let onlineEntered = false;
 let entered = false;
 let pendingFocus = "";
 const TOAST_HOLD = 2200;
@@ -238,18 +215,6 @@ function load() {
     }
   } catch {
     /* partida nova */
-  }
-}
-
-function esc(value) {
-  return String(value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
-}
-
-function buzz(strong) {
-  try {
-    navigator.vibrate?.(strong ? [12, 40, 16] : 12);
-  } catch {
-    /* sem vibração */
   }
 }
 
@@ -640,67 +605,8 @@ function formula(entry, score) {
   return bits.join("");
 }
 
-const DARK = "#231f28";
-const CREAM = "#f6eed8";
-
-function at(x, y, deg, r) {
-  const a = (deg * Math.PI) / 180;
-  return [Math.round((x + r * Math.cos(a)) * 10) / 10, Math.round((y + r * Math.sin(a)) * 10) / 10];
-}
-
-function shellSvg(hx, hy, deg, r) {
-  const lobes = 5;
-  const spread = 66;
-  const angle = (i) => deg - spread + (2 * spread * i) / lobes;
-  const tips = Array.from({ length: lobes + 1 }, (_, i) => at(hx, hy, angle(i), r));
-  let edge = `M${hx} ${hy}L${tips[0].join(" ")}`;
-  for (let i = 0; i < lobes; i += 1) {
-    edge += `Q${at(hx, hy, angle(i + 0.5), r * 1.22).join(" ")} ${tips[i + 1].join(" ")}`;
-  }
-  const ribs = tips
-    .slice(1, -1)
-    .map((tip, i) => `M${at(hx, hy, angle(i + 1), r * 0.24).join(" ")}L${tip.join(" ")}`)
-    .join("");
-  const back = at(hx, hy, deg + 180, r * 0.2);
-  const ears = [at(hx, hy, deg - 90, r * 0.2), at(...back, deg - 90, r * 0.36), at(...back, deg + 90, r * 0.36), at(hx, hy, deg + 90, r * 0.2)];
-  return `<g stroke="${DARK}" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"><path class="k" d="M${ears.map((p) => p.join(" ")).join("L")}Z"/><path class="k" d="${edge}Z"/><path fill="none" stroke-width=".9" d="${ribs}"/></g>`;
-}
-
-function frameSvg(h) {
-  return `<path fill="none" stroke="${DARK}" stroke-width="3.4" d="M13 7H37A13 13 0 0 0 63 7H87V13H93V${h - 13}H87V${h - 7}H63A13 13 0 0 0 37 ${h - 7}H13V${h - 13}H7V13H13Z"/><path fill="none" stroke="#e8c55a" stroke-width="1.5" d="M13 7H37A13 13 0 0 0 63 7H87V13H93V${h - 13}H87V${h - 7}H63A13 13 0 0 0 37 ${h - 7}H13V${h - 13}H7V13H13Z"/><g stroke="${DARK}" stroke-width="1.4"><path class="k" d="M40 0A10 10 0 0 0 60 0Z"/><path fill="${CREAM}" d="M45 0A5 5 0 0 0 55 0Z"/><path class="k" d="M40 ${h}A10 10 0 0 1 60 ${h}Z"/><path fill="${CREAM}" d="M45 ${h}A5 5 0 0 1 55 ${h}Z"/></g>`;
-}
-
-function inlineNumber(text, cy, fs) {
-  const y = Math.round((cy + fs * 0.35) * 10) / 10;
-  return `<g font-family="'Bebas Neue', Impact, sans-serif" font-size="${fs}" text-anchor="middle" stroke-linejoin="round"><text x="51.6" y="${y + 1.6}" fill="${DARK}" stroke="${DARK}" stroke-width="7">${text}</text><text x="50" y="${y}" fill="${DARK}" stroke="${DARK}" stroke-width="7">${text}</text><text class="ks" x="50" y="${y}" stroke-width="4.2">${text}</text><text x="50" y="${y}" fill="none" stroke="${CREAM}" stroke-width="1.15">${text}</text></g>`;
-}
-
-const SHELLS = shellSvg(17, 60, 180, 18) + shellSvg(83, 60, 0, 18);
-const MOD_SHELLS = shellSvg(50, 36, -90, 11) + shellSvg(50, 94, 90, 11);
-
-function cardArtSvg(card) {
-  const size = card.n > 9 ? 66 : 84;
-  const ls = card.name.length > 5 ? 9.4 : 10.2;
-  return `<svg class="card-svg" viewBox="0 0 100 140" aria-hidden="true">${frameSvg(140)}${SHELLS}${inlineNumber(card.n, 60, size)}<g stroke="${DARK}" stroke-width="1.3" stroke-linejoin="round"><path fill="#dccb9c" d="M19 103L10 104.5L13.5 109.5L10 114.5L19 116Z"/><path fill="#dccb9c" d="M81 103L90 104.5L86.5 109.5L90 114.5L81 116Z"/><path fill="#fcf7e8" d="M17 101Q50 98 83 101V117Q50 114 17 117Z"/></g><text x="50" y="112.4" font-family="Outfit, sans-serif" font-weight="800" font-size="${ls}" letter-spacing="1.1" fill="${DARK}" text-anchor="middle">${esc(card.name.toUpperCase())}</text></svg>`;
-}
-
-function modArtSvg(label) {
-  return `<svg class="mod-svg" viewBox="0 0 100 130" aria-hidden="true">${frameSvg(130)}${MOD_SHELLS}${inlineNumber(label, 65, label.length > 2 ? 44 : 52)}</svg>`;
-}
-
 function cardButton(card, pressed) {
   return `<button type="button" class="card${pressed ? " on" : ""}" style="--ink:${card.ink};--i:${card.n}" data-action="toggle-number" data-n="${card.n}" data-focus="n-${card.n}" aria-pressed="${pressed}" aria-label="${card.n}, ${esc(card.name)}">${cardArtSvg(card)}</button>`;
-}
-
-function cardFace(card, extra) {
-  return `<div class="card ${extra}" style="--ink:${card.ink}" aria-hidden="true">${cardArtSvg(card)}</div>`;
-}
-
-function heroHand() {
-  const hand = [CARDS[2], CARDS[7], CARDS[10]];
-  return `<div class="hero-hand" aria-hidden="true">${hand
-    .map((card, i) => cardFace(card, `hero hero-${i}`))
-    .join("")}</div>`;
 }
 
 function boardTable(rows) {
@@ -845,7 +751,7 @@ function playView() {
   return `<main class="play">
     <header class="top">
       <div class="brandline">
-        <div class="brand"><span class="mark" style="--ink:${CARDS[7].ink}" aria-hidden="true"><svg viewBox="0 0 100 140">${frameSvg(140)}${inlineNumber(7, 70, 104)}</svg></span><div><h1>Flip 7</h1><p>Rodada ${roundNumber()}</p></div></div>
+        <div class="brand">${brandMark()}<div><h1>Flip 7</h1><p>Rodada ${roundNumber()}</p></div></div>
         <div class="metawrap"><p class="meta">${leader} / ${TARGET}</p><button type="button" class="iconbtn" data-action="open-menu" aria-label="Menu da mesa">···</button></div>
       </div>
       <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="${TARGET}" aria-valuenow="${leader}" aria-label="Pontos de quem lidera, meta ${TARGET}"><span style="width:${pct}%"></span></div>
@@ -992,10 +898,6 @@ function title() {
   return "Flip 7 — Marcador";
 }
 
-const calmMotion = matchMedia("(prefers-reduced-motion: reduce)");
-const EASE = "cubic-bezier(0.2, 0.8, 0.2, 1)";
-const CONFETTI = ["#e25038", "#f7b132", "#47b5d6", "#28ae52", "#8951a4", "#de4982", "#f6eed8", "#c8d627"];
-
 function snapshotView() {
   const main = document.querySelector("#app > main");
   if (!main) return null;
@@ -1024,80 +926,6 @@ function snapshotView() {
     roster: new Set([...main.querySelectorAll(".roster li")].map((li) => li.dataset.id)),
     summary: Boolean(main.querySelector(".sum")),
   };
-}
-
-function countUp(el, from, to, delay = 0) {
-  if (!Number.isFinite(from) || !Number.isFinite(to) || from === to) return;
-  const duration = Math.min(700, 220 + Math.abs(to - from) * 10);
-  const start = performance.now() + delay;
-  el.textContent = String(from);
-  el.dataset.value = String(to);
-  setTimeout(() => {
-    el.textContent = String(to);
-  }, delay + duration + 50);
-  const step = () => {
-    if (!el.isConnected) return;
-    const p = Math.min(1, Math.max(0, (performance.now() - start) / duration));
-    el.textContent = String(Math.round(from + (to - from) * (1 - (1 - p) ** 3)));
-    if (p < 1) requestAnimationFrame(step);
-  };
-  requestAnimationFrame(step);
-}
-
-function confetti(x, y, count, spread = 1) {
-  const layer = document.createElement("div");
-  layer.className = "confetti";
-  layer.setAttribute("aria-hidden", "true");
-  document.body.append(layer);
-  for (let i = 0; i < count; i += 1) {
-    const bit = document.createElement("i");
-    const angle = Math.random() * Math.PI * 2;
-    const dist = (70 + Math.random() * 170) * spread;
-    const dx = Math.cos(angle) * dist;
-    const dy = Math.sin(angle) * dist * 0.8 - 70 * spread;
-    const spin = (Math.random() - 0.5) * 900;
-    bit.style.cssText = `left:${x}px;top:${y}px;background:${CONFETTI[i % CONFETTI.length]};${i % 3 === 0 ? "border-radius:50%;width:8px;height:8px;" : ""}`;
-    layer.append(bit);
-    bit.animate(
-      [
-        { translate: "0 0", rotate: "0deg", opacity: 1 },
-        { translate: `${dx}px ${dy}px`, rotate: `${spin * 0.5}deg`, opacity: 1, offset: 0.45 },
-        { translate: `${dx * 1.25}px ${dy + 260}px`, rotate: `${spin}deg`, opacity: 0 },
-      ],
-      { duration: 1300 + Math.random() * 800, delay: Math.random() * 90, easing: "cubic-bezier(0.15, 0.6, 0.35, 1)", fill: "both" }
-    );
-  }
-  setTimeout(() => layer.remove(), 2400);
-}
-
-function flyPoints(from, to, text, bust) {
-  const target = to.getBoundingClientRect();
-  const x0 = from.left + from.width / 2;
-  const y0 = from.top + from.height / 2;
-  const dx = target.left + target.width / 2 - x0;
-  const dy = target.top + target.height / 2 - y0;
-  const el = document.createElement("div");
-  el.className = `fly${bust ? " bust" : ""}`;
-  el.setAttribute("aria-hidden", "true");
-  el.textContent = text;
-  el.style.cssText = `left:${x0}px;top:${y0}px`;
-  document.body.append(el);
-  el.animate(
-    [
-      { translate: "-50% -50%", scale: 1, opacity: 1 },
-      { translate: `calc(-50% + ${dx * 0.35}px) calc(-50% + ${dy * 0.35 - 46}px)`, scale: 1.2, opacity: 1, offset: 0.4 },
-      { translate: `calc(-50% + ${dx}px) calc(-50% + ${dy}px)`, scale: 0.35, opacity: 0.15 },
-    ],
-    { duration: 640, easing: "cubic-bezier(0.45, 0, 0.3, 1)" }
-  ).finished.then(() => el.remove(), () => el.remove());
-}
-
-function flash(kind) {
-  const el = document.createElement("div");
-  el.className = `flash ${kind}`;
-  el.setAttribute("aria-hidden", "true");
-  document.body.append(el);
-  el.addEventListener("animationend", () => el.remove(), { once: true });
 }
 
 function animateChanges(before) {
@@ -1305,6 +1133,7 @@ function handle(action, target) {
   }
   if (action === "home-online") {
     entered = true;
+    onlineModule.go("start");
     return enterOnline();
   }
   if (action.startsWith("ol-")) return handleOnline(action, target);
@@ -1312,133 +1141,192 @@ function handle(action, target) {
 
 // --- Jogo online -------------------------------------------------------
 
-const online = onlineModule.onlineView;
 const room = roomModule.store;
-
-function isOnline() {
-  return mode === "online" || Boolean(new URLSearchParams(location.search).get("sala"));
-}
+let lastOnlineHtml = "";
+let lastOnlineDialog = null;
 
 function enterOnline() {
   mode = "online";
-  document.body.classList.add("online-mode");
+  lastOnlineHtml = "";
   renderOnline();
 }
 
-function leaveOnline() {
-  roomModule.exitRoom();
-  onlineModule.go("home");
-  mode = "marker";
-  onlineEntered = true;
-  entered = true;
-  document.body.classList.remove("online-mode");
+function setRoomUrl(code) {
   const url = new URL(location.href);
-  url.searchParams.delete("sala");
+  if (code) url.searchParams.set("sala", code);
+  else url.searchParams.delete("sala");
   history.replaceState(null, "", url.pathname + url.search);
+}
+
+function exitRoom() {
+  roomModule.exitRoom();
+  onlineModule.view.dialog = null;
+  onlineModule.view.peek = null;
+  setRoomUrl("");
+}
+
+function leaveOnline() {
+  exitRoom();
+  onlineModule.go("start");
+  mode = "marker";
+  entered = false;
+  document.body.classList.remove("in-play");
   render();
 }
 
 function renderOnline() {
+  if (mode !== "online") return;
   const root = document.getElementById("app");
-  root.innerHTML = onlineModule.onlineView();
-  document.title = `${room.state?.name || "Flip 7"} · Online`;
+  const html = onlineModule.onlineView();
+  document.title = onlineModule.title();
+  if (html === lastOnlineHtml && root.firstElementChild) return;
+  const before = lastOnlineHtml ? onlineModule.snapshot() : null;
+  const active = document.activeElement;
+  const focusId = active && root.contains(active) && active.id ? active.id : "";
+  const selection = focusId && typeof active.selectionStart === "number" ? [active.selectionStart, active.selectionEnd] : null;
+  const values = new Map([...root.querySelectorAll("input[id]:not([readonly])")].map((input) => [input.id, input.value]));
+  const screen = root.querySelector("main")?.dataset.screen;
+  const y = window.scrollY;
+  const rankLeft = root.querySelector(".rank")?.scrollLeft ?? 0;
+  root.innerHTML = html;
+  lastOnlineHtml = html;
+  document.body.classList.toggle("in-play", Boolean(root.querySelector("main.play")));
+  for (const [id, value] of values) {
+    const input = document.getElementById(id);
+    if (input && !input.readOnly) input.value = value;
+  }
+  const rank = root.querySelector(".rank");
+  if (rank) rank.scrollLeft = rankLeft;
+  window.scrollTo(0, root.querySelector("main")?.dataset.screen === screen ? y : 0);
+  const dialog = onlineModule.view.dialog;
   if (pendingFocus) {
     document.getElementById(pendingFocus)?.focus({ preventScroll: true });
     pendingFocus = "";
+  } else if (dialog !== lastOnlineDialog && dialog) {
+    const field = document.querySelector(".sheet input");
+    field?.focus({ preventScroll: true });
+    field?.select?.();
+  } else if (focusId) {
+    const again = document.getElementById(focusId);
+    again?.focus({ preventScroll: true });
+    if (selection && again?.setSelectionRange) again.setSelectionRange(...selection);
   }
+  lastOnlineDialog = dialog;
+  onlineModule.animate(before);
+  const viewed = root.querySelector(".chip[aria-current=\"true\"]");
+  viewed?.scrollIntoView({ inline: "nearest", block: "nearest" });
 }
 
-function askName(message) {
-  const name = prompt(message, roomModule.myName());
-  if (name === null) return null;
-  const clean = name.trim().slice(0, 18);
-  return clean || null;
+function cleanName(value) {
+  return String(value || "").trim().replace(/\s+/g, " ").slice(0, 18);
+}
+
+function invalid(input) {
+  input.classList.add("invalid");
+  input.focus();
 }
 
 async function handleOnline(action, target) {
+  const view = onlineModule.view;
   const s = room.state;
-  if (action === "ol-marker" || action === "ol-home") return leaveOnline();
-  if (action === "ol-create-screen") {
-    onlineModule.go("create");
+  if (action === "ol-home") return leaveOnline();
+  if (action === "ol-exit") {
+    exitRoom();
+    onlineModule.go("start");
     return renderOnline();
   }
-  if (action === "ol-enter-screen") {
-    onlineModule.go("enter");
-    return renderOnline();
-  }
-  if (action === "ol-create" || action === "ol-enter") {
+  if (action === "ol-open") {
     const form = target.closest("form");
     const roomField = form.elements.namedItem("room");
     const playerField = form.elements.namedItem("player");
-    const playerName = playerField.value.trim().slice(0, 18);
-    if (!playerName) return failName(form);
-    roomModule.rememberName(playerName);
+    const name = cleanName(playerField.value);
+    view.roomDraft = roomField.value;
     const code = api.slug(roomField.value);
-    if (!code) {
-      roomField.focus();
-      roomField.style.borderColor = "#e25038";
-      return;
-    }
-    onlineModule.view.roomDraft = roomField.value;
-    onlineModule.view.codeDraft = roomField.value;
+    if (!code) return invalid(roomField);
+    if (!name) return invalid(playerField);
+    roomModule.rememberName(name);
+    view.error = "";
     try {
-      if (action === "ol-create") await roomModule.createRoom(roomField.value);
-      else {
-        const ok = await roomModule.openRoom(code);
-        if (!ok) return renderOnline();
-      }
-      enterOnline();
-      if (!roomModule.amIn()) await roomModule.joinSelf(playerName);
-      else if (roomModule.myName() !== playerName) {
-        await roomModule.play((state, id) => gameModule.rename(state, id, playerName));
-      }
+      await roomModule.createRoom(roomField.value);
+      setRoomUrl(code);
+      if (!roomModule.amIn()) await roomModule.joinSelf(name);
+      else if (room.state.players.find((p) => p.id === room.me)?.name !== name) await roomModule.play((state, id) => gameModule.rename(state, id, name));
     } catch (error) {
-      alert(String(error?.message || error));
+      exitRoom();
+      view.error = /fetch|network/i.test(String(error?.message)) ? "Sem conexão. Confira a internet e tente de novo." : String(error?.message || error);
     }
     return renderOnline();
   }
   if (action === "ol-join") {
-    const form = target.closest("form");
-    const playerName = form.elements.namedItem("player").value.trim().slice(0, 18);
-    if (!playerName) return failName(form);
-    await roomModule.joinSelf(playerName);
+    const input = target.closest("form").elements.namedItem("player");
+    const name = cleanName(input.value);
+    if (!name) return invalid(input);
+    await roomModule.joinSelf(name);
     return renderOnline();
   }
   if (action === "ol-copy") {
-    const input = document.getElementById("share-link");
+    const link = roomModule.link(room.code);
     try {
-      await navigator.clipboard.writeText(input.value);
-      target.textContent = "Copiado";
-      setTimeout(() => renderOnline(), 1500);
+      await navigator.clipboard.writeText(link);
     } catch {
-      input.select();
+      document.getElementById("share-link")?.select();
+    }
+    view.copied = true;
+    renderOnline();
+    setTimeout(() => {
+      view.copied = false;
+      renderOnline();
+    }, 1600);
+    return;
+  }
+  if (action === "ol-share") {
+    try {
+      await navigator.share({ title: `Flip 7 · ${s?.name || room.code}`, text: "Bora jogar Flip 7?", url: roomModule.link(room.code) });
+    } catch {
+      /* compartilhamento cancelado */
     }
     return;
   }
-  if (action === "ol-start") return void (await act((state) => gameModule.startRound(state)));
-  if (action === "ol-hit") return void (await act((state, id) => gameModule.hit(state, id)));
-  if (action === "ol-stay") return void (await act((state, id) => gameModule.stay(state, id)));
-  if (action === "ol-resolve") return void (await act((state) => gameModule.resolve(state, target.dataset.id)));
-  if (action === "ol-next") return void (await act((state) => gameModule.nextRound(state)));
-  if (action === "ol-kick") return void (await act((state) => gameModule.leave(state, target.dataset.id)));
-  if (action === "ol-rematch") {
-    return void (await act((state) => {
-      for (const player of state.players) player.score = 0;
-      Object.assign(state, { winner: null, dealer: 0, roundNo: 0, log: [], hands: {} });
-      state.phase = "lobby";
-      return gameModule.startRound(state);
-    }));
+  if (action === "ol-peek") {
+    const id = target.dataset.id;
+    view.peek = id;
+    view.peekTurn = s?.turn ?? null;
+    view.hold = null;
+    return renderOnline();
+  }
+  if (action === "ol-menu") {
+    view.dialog = "menu";
+    return renderOnline();
+  }
+  if (action === "ol-rename-open") {
+    view.dialog = "rename";
+    return renderOnline();
+  }
+  if (action === "ol-dismiss" || action === "ol-backdrop") {
+    view.dialog = null;
+    return renderOnline();
   }
   if (action === "ol-rename") {
-    const name = askName("Seu nome na mesa:");
-    if (!name) return;
+    const input = target.closest("form").elements.namedItem("player");
+    const name = cleanName(input.value);
+    if (!name) return invalid(input);
     roomModule.rememberName(name);
-    await act((state, id) => gameModule.rename(state, id, name));
-    return;
+    view.dialog = null;
+    return act((state, id) => gameModule.rename(state, id, name));
   }
+  if (action === "ol-start") return act((state) => gameModule.startRound(state));
+  if (action === "ol-hit") return act((state, id) => gameModule.hit(state, id));
+  if (action === "ol-stay") return act((state, id) => gameModule.stay(state, id));
+  if (action === "ol-resolve") return act((state) => gameModule.resolve(state, target.dataset.id));
+  if (action === "ol-next") return act((state) => gameModule.nextRound(state));
+  if (action === "ol-kick") return act((state) => gameModule.leave(state, target.dataset.id));
+  if (action === "ol-rematch") return act((state) => gameModule.rematch(state));
   if (action === "ol-leave") {
-    if (s && roomModule.amIn()) await act((state, id) => gameModule.leave(state, id));
-    return leaveOnline();
+    view.dialog = null;
+    if (s && roomModule.amIn()) await roomModule.play((state, id) => gameModule.leave(state, id));
+    exitRoom();
+    onlineModule.go("start");
+    return renderOnline();
   }
 }
 
@@ -1447,14 +1335,11 @@ async function act(mutate) {
   renderOnline();
 }
 
-function failName(form) {
-  const input = form.elements.namedItem("player");
-  input.focus();
-  input.style.borderColor = "#e25038";
-  return;
-}
-
 function onKey(event) {
+  if (mode === "online") {
+    if (event.key === "Escape" && onlineModule.view.dialog) handleOnline("ol-dismiss");
+    return;
+  }
   if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
   if (event.repeat) return;
   if (state.dialog) {
@@ -1493,7 +1378,7 @@ function init() {
   root.addEventListener("click", (event) => {
     const target = event.target.closest("[data-action]");
     if (!target || !root.contains(target)) return;
-    if (target.dataset.action === "backdrop" && event.target.closest(".sheet")) return;
+    if (target.dataset.action.endsWith("backdrop") && event.target.closest(".sheet")) return;
     if (target.disabled) return;
     handle(target.dataset.action, target);
   });
@@ -1527,18 +1412,15 @@ function init() {
   });
   render();
   offerInstall();
-  roomModule.onRoom(() => {
-    if (mode === "online") renderOnline();
-  });
-  const code = new URLSearchParams(location.search).get("sala");
+  roomModule.onRoom(renderOnline);
+  onlineModule.onRerender(renderOnline);
+  const code = api.slug(new URLSearchParams(location.search).get("sala") || "");
   if (code) {
     entered = true;
-    mode = "online";
-    document.body.classList.add("online-mode");
-    renderOnline();
-    roomModule.openRoom(api.slug(code)).then((ok) => {
-      if (!ok) return renderOnline();
-      if (!roomModule.amIn() && roomModule.myName()) void roomModule.joinSelf(roomModule.myName()).then(renderOnline);
+    onlineModule.view.roomDraft = code;
+    enterOnline();
+    roomModule.openRoom(code).then(async (ok) => {
+      if (ok && !roomModule.amIn() && roomModule.myName()) await roomModule.joinSelf(roomModule.myName());
       renderOnline();
     });
   }

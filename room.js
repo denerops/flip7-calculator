@@ -185,27 +185,32 @@ export function exitRoom() {
   emit();
 }
 
-/** Aplica uma jogada local e grava. Se outro gravou antes, recarrega e avisa. */
-export async function play(mutate, options = {}) {
+/** Aplica uma jogada local e grava. Se outro gravou antes, recarrega e refaz a jogada. */
+export async function play(mutate) {
   if (!store.state || store.saving) return false;
-  const next = structuredClone(store.state);
-  mutate(next, store.me);
-  store.state = next;
-  emit();
-  return persist(next, options.force);
-}
-
-async function persist(state, force = false) {
   store.saving = true;
+  store.error = "";
   try {
-    let version = await api.saveRoom(store.code, force ? store.version : store.version, state);
-    if (version === null) {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const before = JSON.stringify(store.state);
+      const next = structuredClone(store.state);
+      mutate(next, store.me);
+      if (JSON.stringify(next) === before) return false;
+      store.state = next;
+      emit();
+      const version = await api.saveRoom(store.code, store.version, next);
+      if (version !== null) {
+        store.version = version;
+        return true;
+      }
       const row = await api.fetchRoom(store.code);
-      if (row) apply(row);
-      return false;
+      if (!row) return false;
+      store.version = row.version;
+      store.state = row.state;
+      store.name = row.name || store.name;
     }
-    store.version = version;
-    return true;
+    emit();
+    return false;
   } catch {
     store.error = "Não consegui salvar. Confira a internet.";
     return false;

@@ -97,21 +97,36 @@ export function join(s, id, name) {
   if (s.players.some((p) => p.id === id)) return s;
   const clean = String(name || "").trim().slice(0, 18) || `Jogador ${s.players.length + 1}`;
   s.players = [...s.players, { id, name: clean, seat: s.players.length, score: 0 }];
+  // Quem chega no meio da rodada espera a próxima.
+  if (s.phase === "playing") s.hands[id] = { ...emptyHand(), active: false, waiting: true };
   ensureHands(s);
   addLog(s, `${clean} entrou na mesa`);
   return s;
 }
 
 export function leave(s, id) {
-  if (s.phase === "playing" && s.turn === id) return s;
   if (!s.players.some((p) => p.id === id)) return s;
+  const playing = s.phase === "playing";
+  const name = nameOf(s, id);
+  const next = playing && s.turn === id ? nextActiveFrom(s, id, id) : s.turn;
   s.players = s.players.filter((p) => p.id !== id);
   delete s.hands[id];
   s.players.forEach((p, i) => {
     p.seat = i;
   });
   s.pending = s.pending.filter((item) => item.by !== id);
+  if (!playing) return s;
+  addLog(s, `${name} saiu da mesa`);
+  if (openPending(s)) return s;
+  s.turn = next && isActive(s, next) ? next : activePlayers(s)[0]?.id || null;
+  if (!s.turn) endRound(s, null);
   return s;
+}
+
+export function rematch(s, rnd = Math.random) {
+  for (const player of s.players) player.score = 0;
+  Object.assign(s, { winner: null, dealer: 0, roundNo: 0, log: [], hands: {}, phase: "lobby" });
+  return startRound(s, rnd);
 }
 
 export function rename(s, id, name) {
@@ -141,10 +156,18 @@ function stand(s, id, points) {
 }
 
 /**
- * Entrega uma carta para a mão `id`.
- * Devolve "bust" | "flip7" | "keep" | "action" (ação guardada para escolher o alvo).
+ * Entrega uma carta para a mão `id` e guarda em `s.last` para as telas animarem.
+ * Devolve "bust" | "flip7" | "keep" | "saved" | "action" (ação guardada para escolher o alvo).
  */
 function give(s, id, card, autoTarget) {
+  s.seq = (s.seq || 0) + 1;
+  const last = { by: id, card, seq: s.seq, result: "keep" };
+  s.last = last;
+  last.result = giveCard(s, id, card, autoTarget);
+  return last.result === "saved" ? "keep" : last.result;
+}
+
+function giveCard(s, id, card, autoTarget) {
   const h = s.hands[id];
   if (card.t === "n") {
     if (h.numbers.includes(card.n)) {
@@ -152,9 +175,10 @@ function give(s, id, card, autoTarget) {
         h.chance = 0;
         burn(s, card);
         addLog(s, `${nameOf(s, id)} usou a Segunda Chance no ${card.n}`);
-        return "keep";
+        return "saved";
       }
       h.bust = true;
+      h.bustOn = card.n;
       stand(s, id, 0);
       burn(s, card);
       addLog(s, `${nameOf(s, id)} estourou no ${card.n}`);
@@ -270,6 +294,7 @@ export function startRound(s, rnd = Math.random) {
     }
   }
 
+  s.last = null;
   addLog(s, `Rodada ${s.roundNo} começou`);
   const first = nextActiveFrom(s, order[s.dealer], null);
   s.turn = first || order[0];
@@ -326,6 +351,10 @@ export function resolve(s, targetId) {
   }
   const chosen = targets.some((p) => p.id === targetId) ? targetId : targets[0].id;
   s.pending = s.pending.slice(1);
+  if (item.kind === "freeze") {
+    s.seq = (s.seq || 0) + 1;
+    s.last = { by: chosen, card: { t: "freeze" }, seq: s.seq, result: "frozen", from: item.by };
+  }
   applyAction(s, chosen, { t: item.kind });
 
   if (!activePlayers(s).length && !s.pending.length) {
