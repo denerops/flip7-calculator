@@ -636,7 +636,7 @@ function modArtSvg(label) {
 }
 
 function cardButton(card, pressed) {
-  return `<button type="button" class="card${pressed ? " on" : ""}" style="--ink:${card.ink}" data-action="toggle-number" data-n="${card.n}" data-focus="n-${card.n}" aria-pressed="${pressed}" aria-label="${card.n}, ${esc(card.name)}">${cardArtSvg(card)}</button>`;
+  return `<button type="button" class="card${pressed ? " on" : ""}" style="--ink:${card.ink};--i:${card.n}" data-action="toggle-number" data-n="${card.n}" data-focus="n-${card.n}" aria-pressed="${pressed}" aria-label="${card.n}, ${esc(card.name)}">${cardArtSvg(card)}</button>`;
 }
 
 function cardFace(card, extra) {
@@ -709,21 +709,21 @@ function calculatorView(player, entry) {
   const full = entry.numbers.length === 7;
   const slots = Array.from({ length: 7 }, (_, i) => {
     const n = entry.numbers[i];
-    return n === undefined ? `<span class="slot"></span>` : `<span class="slot on" style="--ink:${CARDS[n].ink}">${n}</span>`;
+    return n === undefined ? `<span class="slot"></span>` : `<span class="slot on" style="--ink:${CARDS[n].ink};--i:${i}" data-n="${n}">${n}</span>`;
   }).join("");
   const hand = `<div class="hand${full ? " flip" : ""}" role="img" aria-label="${entry.numbers.length} de 7 números">${slots}</div>`;
-  const mods = MODS.map((mod) => {
+  const mods = MODS.map((mod, i) => {
     const owner = ownerOf("bonus", mod.v);
     const on = entry.bonuses.includes(mod.v);
-    return `<button type="button" class="mod${on ? " on" : ""}${owner ? " taken" : ""}" style="--ink:${mod.ink}" data-action="toggle-bonus" data-n="${mod.v}" data-focus="bonus-${mod.v}" aria-pressed="${on}" aria-label="Modificador +${mod.v}${owner ? `, com ${esc(owner.name)}` : ""}" title="${owner ? `Com ${owner.name}` : `+${mod.v}`}">${modArtSvg(`+${mod.v}`)}</button>`;
+    return `<button type="button" class="mod${on ? " on" : ""}${owner ? " taken" : ""}" style="--ink:${mod.ink};--i:${13 + i}" data-action="toggle-bonus" data-n="${mod.v}" data-focus="bonus-${mod.v}" aria-pressed="${on}" aria-label="Modificador +${mod.v}${owner ? `, com ${esc(owner.name)}` : ""}" title="${owner ? `Com ${owner.name}` : `+${mod.v}`}">${modArtSvg(`+${mod.v}`)}</button>`;
   }).join("");
   const xOwner = ownerOf("x2");
   const entryBody = `<div class="entry${full ? " full" : ""}"><div class="deck"><div class="grid">${CARDS.slice(0, 10)
     .map((card) => cardButton(card, entry.numbers.includes(card.n)))
     .join("")}</div><div class="grid three">${CARDS.slice(10)
     .map((card) => cardButton(card, entry.numbers.includes(card.n)))
-    .join("")}</div><div class="mods">${mods}<button type="button" class="mod x2${entry.x2 ? " on" : ""}${xOwner ? " taken" : ""}" style="--ink:#d9383a" data-action="toggle-x2" data-focus="x2" aria-pressed="${entry.x2}" aria-label="Vezes 2${xOwner ? `, com ${esc(xOwner.name)}` : ""}">${modArtSvg("×2")}</button></div></div></div>`;
-  return `<section class="calc deal${entry.bust ? " bust" : ""}">
+    .join("")}</div><div class="mods">${mods}<button type="button" class="mod x2${entry.x2 ? " on" : ""}${xOwner ? " taken" : ""}" style="--ink:#d9383a;--i:18" data-action="toggle-x2" data-focus="x2" aria-pressed="${entry.x2}" aria-label="Vezes 2${xOwner ? `, com ${esc(xOwner.name)}` : ""}">${modArtSvg("×2")}</button></div></div></div>`;
+  return `<section class="calc deal${entry.bust ? " bust" : ""}" data-player="${player.id}">
     <div class="hand-head">
       <div class="hand-info">
         <p class="who">Vez de <strong>${esc(player.name)}</strong></p>
@@ -738,10 +738,10 @@ function calculatorView(player, entry) {
 
 function summaryView(rows) {
   const list = rows
-    .map((row) => {
+    .map((row, i) => {
       const entry = currentRound().entries[row.id];
       const score = scoreOf(entry);
-      return `<article class="sum-row${row.rank === 1 && row.total > 0 ? " leader" : ""}">
+      return `<article class="sum-row${row.rank === 1 && row.total > 0 ? " leader" : ""}" style="--i:${i}">
         <span class="rk">${row.rank}</span>
         <div class="meta"><span class="nm">${esc(row.name)}</span><small>${esc(detail(entry))}</small></div>
         <span class="round">${entry.bust ? "0" : `+${score.total}`}</span>
@@ -812,7 +812,7 @@ function setupView() {
           .map((player, index) => {
             const up = index === 0 ? "disabled" : "";
             const down = index === state.players.length - 1 ? "disabled" : "";
-            return `<li><span class="seat">${index + 1}</span><span class="nm">${esc(player.name)}</span>
+            return `<li data-id="${player.id}"><span class="seat">${index + 1}</span><span class="nm">${esc(player.name)}</span>
               <button type="button" class="nudge" data-action="move" data-id="${player.id}" data-dir="-1" aria-label="Subir ${esc(player.name)}" ${up}>↑</button>
               <button type="button" class="nudge" data-action="move" data-id="${player.id}" data-dir="1" aria-label="Descer ${esc(player.name)}" ${down}>↓</button>
               <button type="button" class="textbtn" data-action="remove-player" data-id="${player.id}" aria-label="Remover ${esc(player.name)}">tirar</button></li>`;
@@ -851,7 +851,7 @@ function victoryView() {
   const winner = rows[0];
   const podium = rows
     .map(
-      (row) => `<li class="${row.rank === 1 ? "leader" : ""}"><span class="rk">${row.rank}</span><span class="nm">${esc(row.name)}</span><span class="tot">${row.total}</span></li>`
+      (row, i) => `<li class="${row.rank === 1 ? "leader" : ""}" style="--i:${i}"><span class="rk">${row.rank}</span><span class="nm">${esc(row.name)}</span><span class="tot">${row.total}</span></li>`
     )
     .join("");
   return `<main class="victory">
@@ -913,7 +913,223 @@ function title() {
   return "Flip 7 — Marcador";
 }
 
+const calmMotion = matchMedia("(prefers-reduced-motion: reduce)");
+const EASE = "cubic-bezier(0.2, 0.8, 0.2, 1)";
+const CONFETTI = ["#e25038", "#f7b132", "#47b5d6", "#28ae52", "#8951a4", "#de4982", "#f6eed8", "#c8d627"];
+
+function snapshotView() {
+  const main = document.querySelector("#app > main");
+  if (!main) return null;
+  const chips = new Map();
+  const shown = (el) => el?.dataset.value ?? el?.textContent ?? null;
+  main.querySelectorAll(".chip").forEach((chip) => {
+    chips.set(chip.dataset.id, {
+      rect: chip.getBoundingClientRect(),
+      tot: shown(chip.querySelector(".tot")),
+      delta: chip.querySelector(".delta")?.textContent,
+    });
+  });
+  const score = main.querySelector(".score b");
+  return {
+    screen: main.classList[0],
+    player: main.querySelector(".calc.deal")?.dataset.player ?? null,
+    pressed: new Set([...main.querySelectorAll('[aria-pressed="true"][data-focus]')].map((el) => el.dataset.focus)),
+    slots: new Set([...main.querySelectorAll(".slot.on")].map((el) => el.dataset.n)),
+    score: shown(score),
+    scoreRect: score?.getBoundingClientRect() ?? null,
+    chips,
+    progress: main.querySelector(".progress span")?.style.width ?? null,
+    round: main.querySelector(".brand p")?.textContent ?? null,
+    float: main.querySelector(".float")?.textContent ?? null,
+    sheet: document.querySelector(".sheet h2")?.textContent ?? null,
+    roster: new Set([...main.querySelectorAll(".roster li")].map((li) => li.dataset.id)),
+    summary: Boolean(main.querySelector(".sum")),
+  };
+}
+
+function countUp(el, from, to, delay = 0) {
+  if (!Number.isFinite(from) || !Number.isFinite(to) || from === to) return;
+  const duration = Math.min(700, 220 + Math.abs(to - from) * 10);
+  const start = performance.now() + delay;
+  el.textContent = String(from);
+  el.dataset.value = String(to);
+  setTimeout(() => {
+    el.textContent = String(to);
+  }, delay + duration + 50);
+  const step = () => {
+    if (!el.isConnected) return;
+    const p = Math.min(1, Math.max(0, (performance.now() - start) / duration));
+    el.textContent = String(Math.round(from + (to - from) * (1 - (1 - p) ** 3)));
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+function confetti(x, y, count, spread = 1) {
+  const layer = document.createElement("div");
+  layer.className = "confetti";
+  layer.setAttribute("aria-hidden", "true");
+  document.body.append(layer);
+  for (let i = 0; i < count; i += 1) {
+    const bit = document.createElement("i");
+    const angle = Math.random() * Math.PI * 2;
+    const dist = (70 + Math.random() * 170) * spread;
+    const dx = Math.cos(angle) * dist;
+    const dy = Math.sin(angle) * dist * 0.8 - 70 * spread;
+    const spin = (Math.random() - 0.5) * 900;
+    bit.style.cssText = `left:${x}px;top:${y}px;background:${CONFETTI[i % CONFETTI.length]};${i % 3 === 0 ? "border-radius:50%;width:8px;height:8px;" : ""}`;
+    layer.append(bit);
+    bit.animate(
+      [
+        { translate: "0 0", rotate: "0deg", opacity: 1 },
+        { translate: `${dx}px ${dy}px`, rotate: `${spin * 0.5}deg`, opacity: 1, offset: 0.45 },
+        { translate: `${dx * 1.25}px ${dy + 260}px`, rotate: `${spin}deg`, opacity: 0 },
+      ],
+      { duration: 1300 + Math.random() * 800, delay: Math.random() * 90, easing: "cubic-bezier(0.15, 0.6, 0.35, 1)", fill: "both" }
+    );
+  }
+  setTimeout(() => layer.remove(), 2400);
+}
+
+function flyPoints(from, to, text, bust) {
+  const target = to.getBoundingClientRect();
+  const x0 = from.left + from.width / 2;
+  const y0 = from.top + from.height / 2;
+  const dx = target.left + target.width / 2 - x0;
+  const dy = target.top + target.height / 2 - y0;
+  const el = document.createElement("div");
+  el.className = `fly${bust ? " bust" : ""}`;
+  el.setAttribute("aria-hidden", "true");
+  el.textContent = text;
+  el.style.cssText = `left:${x0}px;top:${y0}px`;
+  document.body.append(el);
+  el.animate(
+    [
+      { translate: "-50% -50%", scale: 1, opacity: 1 },
+      { translate: `calc(-50% + ${dx * 0.35}px) calc(-50% + ${dy * 0.35 - 46}px)`, scale: 1.2, opacity: 1, offset: 0.4 },
+      { translate: `calc(-50% + ${dx}px) calc(-50% + ${dy}px)`, scale: 0.35, opacity: 0.15 },
+    ],
+    { duration: 640, easing: "cubic-bezier(0.45, 0, 0.3, 1)" }
+  ).finished.then(() => el.remove(), () => el.remove());
+}
+
+function flash(kind) {
+  const el = document.createElement("div");
+  el.className = `flash ${kind}`;
+  el.setAttribute("aria-hidden", "true");
+  document.body.append(el);
+  el.addEventListener("animationend", () => el.remove(), { once: true });
+}
+
+function animateChanges(before) {
+  if (calmMotion.matches) return;
+  const main = document.querySelector("#app > main");
+  if (!main) return;
+  if (!before || before.screen !== main.classList[0]) {
+    main.classList.add("arrive");
+    const win = main.querySelector(".win-score");
+    if (win) {
+      countUp(win, 0, Number(win.textContent), 350);
+      setTimeout(() => confetti(innerWidth / 2, innerHeight * 0.28, 110, 1.6), 300);
+    }
+    return;
+  }
+
+  const sheet = document.querySelector(".sheet h2");
+  if (sheet && sheet.textContent !== before.sheet) document.querySelector(".modal").classList.add(before.sheet ? "swap" : "arrive");
+
+  const float = main.querySelector(".float");
+  if (float && float.textContent !== before.float) float.classList.add("arrive");
+
+  main.querySelectorAll(".roster li").forEach((li) => {
+    if (!before.roster.has(li.dataset.id)) li.classList.add("arrive");
+  });
+
+  const bar = main.querySelector(".progress span");
+  if (bar && before.progress !== null && bar.style.width !== before.progress) {
+    bar.animate([{ width: before.progress }, { width: bar.style.width }], { duration: 800, delay: 300, easing: EASE, fill: "backwards" });
+  }
+
+  const round = main.querySelector(".brand p");
+  if (round && before.round !== null && round.textContent !== before.round) round.classList.add("bump");
+
+  const calc = main.querySelector(".calc.deal");
+  const switched = (calc?.dataset.player ?? null) !== before.player;
+  const leaving = before.player && switched ? currentRound()?.entries[before.player] : null;
+  const leavingChip = leaving ? main.querySelector(`.chip[data-id="${CSS.escape(before.player)}"]`) : null;
+  const leavingOld = leavingChip ? before.chips.get(before.player) : null;
+  const scored =
+    leaving?.confirmed && leavingOld && before.scoreRect &&
+    (leavingOld.tot !== leavingChip.querySelector(".tot")?.textContent || (leaving.bust && leavingOld.delta !== "0"));
+  const delay = scored ? 560 : 0;
+
+  main.querySelectorAll(".chip").forEach((chip) => {
+    const old = before.chips.get(chip.dataset.id);
+    if (!old) {
+      chip.classList.add("arrive");
+      return;
+    }
+    const now = chip.getBoundingClientRect();
+    const dx = old.rect.left - now.left;
+    const dy = old.rect.top - now.top;
+    if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+      chip.animate([{ translate: `${dx}px ${dy}px` }, { translate: "0 0" }], { duration: 560, delay, easing: EASE, fill: "backwards" });
+    }
+    const tot = chip.querySelector(".tot");
+    if (tot && old.tot !== tot.textContent) {
+      countUp(tot, Number(old.tot), Number(tot.textContent), delay);
+      chip.style.setProperty("--delay", `${delay}ms`);
+      chip.classList.add("gain");
+    }
+  });
+
+  if (scored) {
+    const total = scoreOf(leaving).total;
+    flyPoints(before.scoreRect, leavingChip.querySelector(".tot"), leaving.bust ? "0" : `+${total}`, leaving.bust);
+    if (leaving.bust) {
+      flash("bust");
+      leavingChip.style.setProperty("--delay", `${delay}ms`);
+      leavingChip.classList.add("busted");
+    } else if (scoreOf(leaving).flip7) {
+      const r = leavingChip.getBoundingClientRect();
+      setTimeout(() => confetti(r.left + r.width / 2, r.top + r.height / 2, 40, 0.7), delay);
+    }
+  }
+
+  const sum = main.querySelector(".sum");
+  if (sum && !before.summary) sum.classList.add("arrive");
+
+  if (!calc) return;
+  if (switched) {
+    calc.classList.add(before.player ? "next" : "deal-in");
+    return;
+  }
+  main.querySelectorAll("[aria-pressed][data-focus]").forEach((el) => {
+    const was = before.pressed.has(el.dataset.focus);
+    const is = el.getAttribute("aria-pressed") === "true";
+    if (is && !was) el.classList.add("pick");
+    if (!is && was) el.classList.add("unpick");
+  });
+  const slots = [...main.querySelectorAll(".slot.on")];
+  slots.forEach((slot) => {
+    if (!before.slots.has(slot.dataset.n)) slot.classList.add("drop-in");
+  });
+  const score = calc.querySelector(".score b");
+  if (score && before.score !== null && score.textContent !== before.score) {
+    countUp(score, Number(before.score), Number(score.textContent));
+    score.classList.add("bump");
+  }
+  if (slots.length === 7 && before.slots.size < 7) {
+    const hand = calc.querySelector(".hand");
+    hand.classList.add("flip7");
+    const r = hand.getBoundingClientRect();
+    confetti(r.left + r.width / 2, r.top + r.height / 2, 70);
+    flash("gold");
+  }
+}
+
 function render() {
+  const before = snapshotView();
   const y = window.scrollY;
   const rankLeft = document.querySelector(".rank")?.scrollLeft ?? 0;
   const calcTop = document.querySelector(".calc")?.scrollTop ?? 0;
@@ -947,6 +1163,7 @@ function render() {
   if (focusKey && !state.dialog) {
     document.querySelector(`[data-focus="${CSS.escape(focusKey)}"]`)?.focus({ preventScroll: true });
   }
+  animateChanges(before);
   clearTimeout(toastTimer);
   if (state.toast || (state.hint && state.screen === "play")) {
     toastTimer = setTimeout(() => {
