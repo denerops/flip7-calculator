@@ -1226,6 +1226,16 @@ function invalid(input) {
   input.focus();
 }
 
+function takenName(input, name) {
+  onlineModule.view.error = `Já tem alguém como "${cleanName(name)}" nesta sala. Escolha outro nome.`;
+  input.classList.add("invalid");
+  renderOnline();
+  const again = input.id ? document.getElementById(input.id) : null;
+  again?.classList.add("invalid");
+  again?.focus();
+  again?.select?.();
+}
+
 async function handleOnline(action, target) {
   const view = onlineModule.view;
   const s = room.state;
@@ -1244,13 +1254,20 @@ async function handleOnline(action, target) {
     const code = api.slug(roomField.value);
     if (!code) return invalid(roomField);
     if (!name) return invalid(playerField);
-    roomModule.rememberName(name);
     view.error = "";
     try {
       await roomModule.createRoom(roomField.value);
       setRoomUrl(code);
-      if (!roomModule.amIn()) await roomModule.joinSelf(name);
-      else if (room.state.players.find((p) => p.id === room.me)?.name !== name) await roomModule.play((state, id) => gameModule.rename(state, id, name));
+      const mine = room.state.players.find((p) => p.id === room.me);
+      if (!mine) {
+        if (gameModule.isNameTaken(room.state, name)) return takenName(playerField, name);
+        await roomModule.joinSelf(name);
+      } else if (gameModule.nameKey(mine.name) !== gameModule.nameKey(name)) {
+        if (gameModule.isNameTaken(room.state, name, room.me)) return takenName(playerField, name);
+        await roomModule.play((state, id) => gameModule.rename(state, id, name));
+      } else {
+        roomModule.rememberName(name);
+      }
     } catch (error) {
       exitRoom();
       view.error = /fetch|network/i.test(String(error?.message)) ? "Sem conexão. Confira a internet e tente de novo." : String(error?.message || error);
@@ -1261,6 +1278,8 @@ async function handleOnline(action, target) {
     const input = target.closest("form").elements.namedItem("player");
     const name = cleanName(input.value);
     if (!name) return invalid(input);
+    if (gameModule.isNameTaken(room.state, name, room.me)) return takenName(input, name);
+    view.error = "";
     await roomModule.joinSelf(name);
     return renderOnline();
   }
@@ -1310,6 +1329,7 @@ async function handleOnline(action, target) {
     const input = target.closest("form").elements.namedItem("player");
     const name = cleanName(input.value);
     if (!name) return invalid(input);
+    if (gameModule.isNameTaken(s, name, room.me)) return takenName(input, name);
     roomModule.rememberName(name);
     view.dialog = null;
     return act((state, id) => gameModule.rename(state, id, name));

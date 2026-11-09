@@ -93,9 +93,27 @@ export function activePlayers(s) {
   return s.players.filter((p) => isActive(s, p.id));
 }
 
+/** Compara nomes sem diferenciar maiúsculas, acentos e espaços repetidos. */
+export function nameKey(name) {
+  return String(name || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLocaleLowerCase("pt-BR");
+}
+
+export function isNameTaken(s, name, exceptId = null) {
+  const key = nameKey(name);
+  if (!key) return false;
+  return (s?.players || []).some((p) => p.id !== exceptId && nameKey(p.name) === key);
+}
+
+/** Quem já tem o nome não entra de novo: devolve a sala do jeito que estava. */
 export function join(s, id, name) {
   if (s.players.some((p) => p.id === id)) return s;
   const clean = String(name || "").trim().slice(0, 18) || `Jogador ${s.players.length + 1}`;
+  if (isNameTaken(s, clean, id)) return s;
   s.players = [...s.players, { id, name: clean, seat: s.players.length, score: 0 }];
   // Quem chega no meio da rodada espera a próxima.
   if (s.phase === "playing") s.hands[id] = { ...emptyHand(), active: false, waiting: true };
@@ -132,7 +150,8 @@ export function rematch(s, rnd = Math.random) {
 export function rename(s, id, name) {
   const player = s.players.find((p) => p.id === id);
   const clean = String(name || "").trim().slice(0, 18);
-  if (player && clean) player.name = clean;
+  if (!player || !clean || isNameTaken(s, clean, id)) return s;
+  player.name = clean;
   return s;
 }
 

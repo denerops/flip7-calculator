@@ -131,6 +131,7 @@ function joinView() {
     <p class="eyebrow">Sala ${esc(s?.name || room.code)}</p>
     <h1>Entre na mesa</h1>
     <form data-form="ol-join">${nameField("ol-name")}</form>
+    ${view.error ? `<p class="warn" role="status">${esc(view.error)}</p>` : ""}
     ${s && s.phase !== "lobby" ? `<p class="fine">A partida já começou. Você entra na próxima rodada.</p>` : ""}
     ${s ? `<p class="order">Na mesa${s.players.length ? ` · ${s.players.length}` : ""}</p>${rosterView(s, false)}` : ""}
     <div class="stack"><button type="button" class="textbtn" data-action="ol-home">Voltar ao início</button></div>
@@ -350,6 +351,7 @@ function dialogView(s) {
         <input id="ol-rename" name="player" maxlength="18" autocomplete="off" autocapitalize="words" autocorrect="off" enterkeyhint="done" value="${esc(store.myName())}" aria-label="Seu nome">
         <button type="submit">Salvar</button>
       </form>
+      ${view.error ? `<p class="warn" role="status">${esc(view.error)}</p>` : ""}
       <button type="button" class="wide" data-action="ol-dismiss" style="margin-top:8px">Cancelar</button>`;
   }
   return `<div class="modal" data-action="ol-backdrop"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">${body}</div></div>`;

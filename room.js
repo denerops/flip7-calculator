@@ -223,9 +223,11 @@ export async function play(mutate) {
 export async function joinSelf(name) {
   const clean = String(name || "").trim().slice(0, 18);
   if (!clean) return;
-  rememberName(clean);
   store.me = myId();
-  await play((state, id) => game.join(state, id, clean));
+  const joined = await play((state, id) => game.join(state, id, clean));
+  // Só guarda o nome se a mesa aceitou: nome repetido não vira o seu nome.
+  if (joined && amIn()) rememberName(clean);
+  return joined;
 }
 
 export async function refresh() {
