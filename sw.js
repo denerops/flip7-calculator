@@ -1,4 +1,4 @@
-const CACHE = "flip7-marcador-v9";
+const CACHE = "flip7-marcador-v10";
 
 const ASSETS = [
   "./",
@@ -6,11 +6,11 @@ const ASSETS = [
   "./styles.css",
   "./app.js",
   "./manifest.json",
-  "./favicon.svg",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png",
-  "./icons/icon-maskable-512.png",
-  "./icons/apple-touch-icon.png",
+  "./favicon.svg?v=10",
+  "./icons/icon-192.png?v=10",
+  "./icons/icon-512.png?v=10",
+  "./icons/icon-maskable-512.png?v=10",
+  "./icons/apple-touch-icon.png?v=10",
   "./fonts/bebas-neue-latin.woff2",
   "./fonts/fraunces-latin.woff2",
   "./fonts/outfit-latin.woff2",
