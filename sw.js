@@ -1,4 +1,4 @@
-const CACHE = "flip7-marcador-v6";
+const CACHE = "flip7-marcador-v7";
 
 const ASSETS = [
   "./",

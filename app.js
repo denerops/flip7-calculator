@@ -578,8 +578,7 @@ function detail(entry) {
 }
 
 function formula(entry, score) {
-  if (entry.bust) return "Estourou. Esta rodada vale 0.";
-  if (!entry.numbers.length && !entry.bonuses.length && !entry.x2) return "Toque os números da mão. O 0 conta para o Flip 7.";
+  if (entry.bust) return "Estourou";
   const bits = [];
   if (entry.numbers.length) bits.push(`<span>${entry.numbers.join(" + ")} = ${score.numbersSum}</span>`);
   if (entry.x2) bits.push(`<span>×2 = ${score.afterX2}</span>`);
@@ -696,14 +695,7 @@ function chipView(row) {
 function banners(rows) {
   const notes = [];
   if (state.banner) notes.push(state.banner);
-  const round = currentRound();
-  const flip = state.players.find((player) => {
-    const entry = round?.entries[player.id];
-    return entry && !entry.bust && entry.numbers.length === 7;
-  });
-  if (flip && !roundReady()) notes.push(`${flip.name} fez Flip 7. A rodada acaba para todo mundo.`);
   const over = rows.filter((row) => row.total >= TARGET);
-  if (over.length && !roundReady()) notes.push("Alguém passou de 200. Ainda dá para lançar o resto da mesa.");
   if (over.length && roundReady()) {
     const sole = rows.length < 2 || rows[0].total > rows[1].total;
     notes.push(sole ? `${rows[0].name} chegou a ${rows[0].total}. Feche a rodada para encerrar.` : "Empate na meta. Se fechar agora, a partida continua.");
@@ -726,21 +718,20 @@ function calculatorView(player, entry) {
     return `<button type="button" class="mod${on ? " on" : ""}${owner ? " taken" : ""}" style="--ink:${mod.ink}" data-action="toggle-bonus" data-n="${mod.v}" data-focus="bonus-${mod.v}" aria-pressed="${on}" aria-label="Modificador +${mod.v}${owner ? `, com ${esc(owner.name)}` : ""}" title="${owner ? `Com ${owner.name}` : `+${mod.v}`}">${modArtSvg(`+${mod.v}`)}</button>`;
   }).join("");
   const xOwner = ownerOf("x2");
-  const entryBody = `<div class="entry${full ? " full" : ""}"><div class="grid">${CARDS.slice(0, 10)
+  const entryBody = `<div class="entry${full ? " full" : ""}"><div class="deck"><div class="grid">${CARDS.slice(0, 10)
     .map((card) => cardButton(card, entry.numbers.includes(card.n)))
     .join("")}</div><div class="grid three">${CARDS.slice(10)
     .map((card) => cardButton(card, entry.numbers.includes(card.n)))
-    .join("")}</div><div class="mods">${mods}<button type="button" class="mod x2${entry.x2 ? " on" : ""}${xOwner ? " taken" : ""}" style="--ink:#d9383a" data-action="toggle-x2" data-focus="x2" aria-pressed="${entry.x2}" aria-label="Vezes 2${xOwner ? `, com ${esc(xOwner.name)}` : ""}">${modArtSvg("×2")}</button></div><p class="legend">×2 dobra os números. Os + entram depois. 7 números: +15.</p></div>`;
-  return `<section class="calc${entry.bust ? " bust" : ""}">
+    .join("")}</div><div class="mods">${mods}<button type="button" class="mod x2${entry.x2 ? " on" : ""}${xOwner ? " taken" : ""}" style="--ink:#d9383a" data-action="toggle-x2" data-focus="x2" aria-pressed="${entry.x2}" aria-label="Vezes 2${xOwner ? `, com ${esc(xOwner.name)}` : ""}">${modArtSvg("×2")}</button></div></div></div>`;
+  return `<section class="calc deal${entry.bust ? " bust" : ""}">
     <div class="hand-head">
       <div class="hand-info">
         <p class="who">Vez de <strong>${esc(player.name)}</strong></p>
         ${hand}
       </div>
-      <div class="score${score.flip7 ? " flip" : ""}${entry.bust ? " bust" : ""}"><b>${display}</b><span>nesta rodada</span></div>
+      <div class="score${score.flip7 ? " flip" : ""}${entry.bust ? " bust" : ""}"><b>${display}</b></div>
     </div>
     <p class="formula">${formula(entry, score)}</p>
-    ${state.hint ? `<p class="warn" role="status">${esc(state.hint)}</p>` : ""}
     ${entryBody}
   </section>`;
 }
@@ -761,20 +752,34 @@ function summaryView(rows) {
   return `<section class="calc"><h2>Rodada ${roundNumber()}</h2><div class="sum">${list}</div></section>`;
 }
 
+const ICONS = {
+  clear: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M4 3.8v5h5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  bust: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12l-5.4 1.9 2.5 5.2-5.2-2.5L12 22l-1.9-5.4-5.2 2.5 2.5-5.2L2 12l5.4-1.9-2.5-5.2 5.2 2.5L12 2l1.9 5.4 5.2-2.5-2.5 5.2z" fill="currentColor" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>`,
+  confirm: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5L19.5 7" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+};
+
+function floatView() {
+  const hint = state.hint ? `<p class="warn" role="status">${esc(state.hint)}</p>` : "";
+  return hint || state.toast ? `<div class="float">${hint}${toastView()}</div>` : "";
+}
+
 function dockView() {
   if (roundReady()) {
-    return `<footer class="dock">${toastView()}<button type="button" class="primary xl" data-action="close-round">Fechar rodada</button></footer>`;
+    return `<footer class="dock">${floatView()}<button type="button" class="primary xl" data-action="close-round">Fechar rodada</button></footer>`;
   }
   const entry = activeEntry();
   const player = activePlayer();
   if (entry.confirmed) {
-    return `<footer class="dock">${toastView()}<button type="button" class="primary xl" data-action="select" data-id="${player.id}">Corrigir ${esc(player.name)}</button></footer>`;
+    return `<footer class="dock">${floatView()}<button type="button" class="primary xl" data-action="select" data-id="${player.id}">Corrigir ${esc(player.name)}</button></footer>`;
   }
   const score = scoreOf(entry);
-  const showClear = entry.bust || hasDraft(entry);
-  const label = entry.bust ? "Confirmar 0" : hasDraft(entry) ? `Confirmar ${score.total}` : "Confirmar";
-  const bustLabel = entry.bust ? "Não estourou" : "Estourou";
-  return `<footer class="dock">${toastView()}${showClear ? `<div class="dock-tools"><button type="button" class="textbtn" data-action="clear">Limpar</button></div>` : ""}<div class="dock-row"><button type="button" class="ghost" data-action="bust">${bustLabel}</button><button type="button" class="primary" data-action="confirm">${label}</button></div></footer>`;
+  const canClear = entry.bust || hasDraft(entry);
+  const label = entry.bust ? "Confirmar 0" : `Confirmar ${score.total}`;
+  return `<footer class="dock">${floatView()}<div class="dock-row">
+    <button type="button" class="icon-btn clear" data-action="clear" aria-label="Limpar a mão" title="Limpar" ${canClear ? "" : "disabled"}>${ICONS.clear}</button>
+    <button type="button" class="icon-btn bust" data-action="bust" aria-pressed="${entry.bust}" aria-label="Estourou" title="Estourou">${ICONS.bust}</button>
+    <button type="button" class="icon-btn go" data-action="confirm" aria-label="${label}" title="Confirmar">${ICONS.confirm}</button>
+  </div></footer>`;
 }
 
 function playView() {
@@ -823,7 +828,6 @@ function setupView() {
     ${heroHand()}
     <p class="eyebrow">Marcador de mesa</p>
     <h1>Flip 7</h1>
-    <p class="lede">Cadastre a mesa. No fim da rodada, toque as cartas de cada mão — a conta e a ordem do placar saem na hora.</p>
     <form data-form="add-player">
       <label class="order" for="player-name">Nome</label>
       <div class="adder">
@@ -838,7 +842,6 @@ function setupView() {
       <button type="button" class="primary xl" data-action="start" ${state.players.length < 2 ? "disabled" : ""}>Começar partida</button>
       ${install}
     </div>
-    <p class="fine">De 2 a 18 pessoas. A meta é 200. O ×2 dobra só os números; os + entram depois; sete números diferentes valem +15.</p>
     ${ios}
   </main>`;
 }
@@ -945,9 +948,10 @@ function render() {
     document.querySelector(`[data-focus="${CSS.escape(focusKey)}"]`)?.focus({ preventScroll: true });
   }
   clearTimeout(toastTimer);
-  if (state.toast) {
+  if (state.toast || (state.hint && state.screen === "play")) {
     toastTimer = setTimeout(() => {
       state.toast = null;
+      state.hint = "";
       render();
     }, 5000);
   }
